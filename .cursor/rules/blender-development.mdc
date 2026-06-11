@@ -1,0 +1,52 @@
+---
+description: Blender Development extension workflow and addon conventions for live reload
+alwaysApply: true
+---
+
+# Blender Development (Jacques Lucke)
+
+This project is developed against a live Blender instance launched via the **Blender Development** extension (`JacquesLucke.blender-development`).
+
+## Workspace setup
+
+- Addon code lives in a **single folder package** at the workspace root (e.g. `auth_head_ingestion/__init__.py`).
+- `.vscode/settings.json` enables `blender.addon.reloadOnSave` and isolates Blender user data via `BLENDER_USER_RESOURCES` → `blender_vscode_development/`.
+- Launch Blender only through **Blender: Start** (not by double-clicking the executable) so symlinks, reload, and debugging work.
+
+## Legacy addon format (required for dev)
+
+- Use `bl_info` in `__init__.py` only. **Do not add `blender_manifest.toml` during development.**
+- The extension treats a manifest as a Blender 4.2+ extension (`bl_ext.*` namespace), which breaks direct imports and reload-on-save.
+- Add `blender_manifest.toml` only when packaging for distribution.
+
+## Reload-on-save requirements
+
+Every new Python submodule must be wired for hot reload in `__init__.py`:
+
+```python
+import importlib
+
+if "bpy" in locals():
+    importlib.reload(operators)  # add one line per submodule
+
+import bpy
+from . import operators
+```
+
+- Implement `register()` / `unregister()` that iterate a `CLASSES` list.
+- `unregister()` must fully reverse `register()` (remove handlers, timers, keymaps) or reload will fail with "Disabling the addon failed".
+- New operator/panel classes go in `operators.py` and must be added to `CLASSES`.
+
+## Code conventions
+
+- Operator IDs: `bl_idname = "auth_head_ingestion.<snake_case>"`
+- Class prefixes: `AUTHHEAD_OT_`, `AUTHHEAD_PT_`, `AUTHHEAD_PG_`
+- Prefer `context.object` over `bpy.context.object` inside operators.
+- Keep operators thin; put bpy scene work in `scene/`, pure Python in `core/`.
+- Never add environment guards to switch between venv and Blender — `import bpy` must work in both.
+
+## When writing addon files
+
+- Match the folder name to the importable package name (no spaces in paths).
+- After structural changes, use **Blender: Reload Addons** once if auto-reload does not pick them up.
+- Do not uninstall the addon via Blender Preferences UI on Windows (risk of deleting linked source).

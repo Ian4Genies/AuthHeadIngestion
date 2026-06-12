@@ -1,6 +1,11 @@
 import bpy
 
 from .properties import ALL_SLOT_IDS
+from .scene.batch_load import (
+    compare_fbx_to_head_shape_keys,
+    included_fbx_count,
+    rescan_fbx_directory,
+)
 
 
 class AUTHHEAD_OT_assign_scene_object(bpy.types.Operator):
@@ -110,9 +115,79 @@ class AUTHHEAD_OT_assign_all_from_selection(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AUTHHEAD_OT_scan_fbx_directory(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.scan_fbx_directory"
+    bl_label = "Rescan Directory"
+    bl_description = "Scan the FBX directory and rebuild the file list"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        result = rescan_fbx_directory(context.scene)
+        if result["count"] == 0 and not context.scene.auth_head_batch.fbx_directory:
+            self.report({"WARNING"}, "Set an FBX directory first")
+            return {"CANCELLED"}
+
+        message = f"Found {result['count']} FBX file(s)"
+        if result["skipped"]:
+            message += f", {result['skipped']} unrecognized"
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
+
+
+class AUTHHEAD_OT_compare_to_loaded(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.compare_to_loaded"
+    bl_label = "Compare to Loaded"
+    bl_description = (
+        "Match FBX files to shape keys on the registered head and "
+        "disable files that are already loaded"
+    )
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        result = compare_fbx_to_head_shape_keys(context.scene)
+        if result.get("error") == "no_head":
+            self.report({"ERROR"}, "Register a head mesh first")
+            return {"CANCELLED"}
+
+        matched = result["matched"]
+        included = included_fbx_count(context.scene)
+        self.report(
+            {"INFO"},
+            f"{matched} already on head — {included} queued for batch",
+        )
+        return {"FINISHED"}
+
+
+class AUTHHEAD_OT_fbx_include_all(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.fbx_include_all"
+    bl_label = "Enable All"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        for item in context.scene.auth_head_batch.fbx_files:
+            if item.shape_key_name and not item.already_loaded:
+                item.include_in_batch = True
+        return {"FINISHED"}
+
+
+class AUTHHEAD_OT_fbx_exclude_all(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.fbx_exclude_all"
+    bl_label = "Disable All"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        for item in context.scene.auth_head_batch.fbx_files:
+            item.include_in_batch = False
+        return {"FINISHED"}
+
+
 CLASSES = (
     AUTHHEAD_OT_assign_scene_object,
     AUTHHEAD_OT_clear_scene_object,
     AUTHHEAD_OT_select_scene_object,
     AUTHHEAD_OT_assign_all_from_selection,
+    AUTHHEAD_OT_scan_fbx_directory,
+    AUTHHEAD_OT_compare_to_loaded,
+    AUTHHEAD_OT_fbx_include_all,
+    AUTHHEAD_OT_fbx_exclude_all,
 )

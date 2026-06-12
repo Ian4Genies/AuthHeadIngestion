@@ -1,6 +1,12 @@
 import bpy
-from bpy.props import PointerProperty
+from bpy.props import BoolProperty, CollectionProperty, IntProperty, PointerProperty, StringProperty
 from bpy.types import PropertyGroup
+
+
+def _on_fbx_directory_changed(self, context):
+    from .scene.batch_load import rescan_fbx_directory
+
+    rescan_fbx_directory(context.scene)
 
 
 def mesh_object_poll(_self, obj):
@@ -92,4 +98,35 @@ ALL_SLOT_IDS = tuple(
     for slot_id, _label in slots
 )
 
-CLASSES = (AUTHHEAD_PG_SceneObjects,)
+class AUTHHEAD_PG_FbxFile(PropertyGroup):
+    filename: StringProperty(name="Filename")
+    filepath: StringProperty(name="File Path", subtype="FILE_PATH")
+    shape_key_name: StringProperty(name="Shape Key")
+    include_in_batch: BoolProperty(
+        name="Include",
+        description="Include this FBX when running the batch load",
+        default=True,
+    )
+    already_loaded: BoolProperty(
+        name="Already Loaded",
+        description="Shape key already exists on the registered head",
+        default=False,
+    )
+
+
+class AUTHHEAD_PG_BatchLoad(PropertyGroup):
+    fbx_directory: StringProperty(
+        name="FBX Directory",
+        description="Folder to scan for authored head FBX files",
+        subtype="DIR_PATH",
+        update=_on_fbx_directory_changed,
+    )
+    fbx_files: CollectionProperty(type=AUTHHEAD_PG_FbxFile)
+    fbx_list_index: IntProperty(name="FBX List Index", default=0)
+
+
+CLASSES = (
+    AUTHHEAD_PG_SceneObjects,
+    AUTHHEAD_PG_FbxFile,
+    AUTHHEAD_PG_BatchLoad,
+)

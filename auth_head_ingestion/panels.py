@@ -1,6 +1,7 @@
 import bpy
 
 from .properties import ALL_SLOT_IDS, SLOT_SECTIONS
+from .scene.batch_load import included_fbx_count
 from .scene.registry import all_slots_filled, registered_count
 
 
@@ -55,12 +56,31 @@ def _draw_progress_row(layout, props):
             cell.label(text="", icon="RADIOBUT_OFF")
 
 
-class AUTHHEAD_PT_scene_registry(bpy.types.Panel):
+class AUTHHEAD_PT_main(bpy.types.Panel):
     bl_label = "Auth Head Ingestion"
+    bl_idname = "AUTHHEAD_PT_main"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+
+    def draw(self, context):
+        self.layout.label(text="Pipeline tools", icon="OUTLINER_OB_GROUP_INSTANCE")
+
+
+class AUTHHEAD_PT_scene_registry(bpy.types.Panel):
+    bl_label = "Scene Object Registry"
     bl_idname = "AUTHHEAD_PT_scene_registry"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_main"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw_header(self, context):
+        props = context.scene.auth_head_objects
+        filled = registered_count(context.scene)
+        total = len(ALL_SLOT_IDS)
+        self.layout.label(text=f"{filled}/{total}", icon="OUTLINER_COLLECTION")
 
     def draw(self, context):
         layout = self.layout
@@ -73,10 +93,6 @@ class AUTHHEAD_PT_scene_registry(bpy.types.Panel):
 
         header = layout.box()
         col = header.column(align=True)
-        title = col.row(align=True)
-        title.label(text="Scene Object Registry", icon="OUTLINER_COLLECTION")
-        title.label(text=f"{filled} / {total}")
-
         _draw_progress_row(col, props)
 
         if all_slots_filled(context.scene):
@@ -101,4 +117,80 @@ class AUTHHEAD_PT_scene_registry(bpy.types.Panel):
                 _draw_slot_row(col, context, props, slot_id, label)
 
 
-CLASSES = (AUTHHEAD_PT_scene_registry,)
+class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
+    bl_label = "Load Heads as Blendshape"
+    bl_idname = "AUTHHEAD_PT_load_heads_blendshape"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_main"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw_header(self, context):
+        batch = context.scene.auth_head_batch
+        included = included_fbx_count(context.scene)
+        total = len(batch.fbx_files)
+        self.layout.label(text=f"{included}/{total}", icon="SHAPEKEY_DATA")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        batch = context.scene.auth_head_batch
+
+        actions = layout.box()
+        row = actions.row(align=True)
+        row.scale_y = 1.2
+        row.operator(
+            "auth_head_ingestion.compare_to_loaded",
+            text="Compare to Loaded",
+            icon="ZOOM_PREVIOUS",
+        )
+
+        directory = layout.box()
+        directory.label(text="Source Directory", icon="FILE_FOLDER")
+        directory.prop(batch, "fbx_directory", text="")
+        row = directory.row(align=True)
+        row.operator(
+            "auth_head_ingestion.scan_fbx_directory",
+            text="Rescan",
+            icon="FILE_REFRESH",
+        )
+
+        if not batch.fbx_files:
+            layout.label(text="No FBX files found", icon="INFO")
+            return
+
+        stats = layout.box()
+        col = stats.column(align=True)
+        col.label(
+            text=f"{len(batch.fbx_files)} file(s) — {included_fbx_count(context.scene)} queued",
+            icon="PRESET",
+        )
+        loaded_count = sum(1 for item in batch.fbx_files if item.already_loaded)
+        if loaded_count:
+            col.label(text=f"{loaded_count} already on registered head", icon="CHECKMARK")
+
+        toggles = layout.row(align=True)
+        toggles.operator("auth_head_ingestion.fbx_include_all", text="Enable All")
+        toggles.operator("auth_head_ingestion.fbx_exclude_all", text="Disable All")
+
+        list_box = layout.box()
+        list_box.label(text="FBX Files", icon="FILE_3D")
+        list_box.template_list(
+            "AUTHHEAD_UL_fbx_files",
+            "",
+            batch,
+            "fbx_files",
+            batch,
+            "fbx_list_index",
+            rows=10,
+        )
+
+
+CLASSES = (
+    AUTHHEAD_PT_main,
+    AUTHHEAD_PT_scene_registry,
+    AUTHHEAD_PT_load_heads_blendshape,
+)

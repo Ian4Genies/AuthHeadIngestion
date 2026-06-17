@@ -104,6 +104,30 @@ def _is_r_wedge(name: str) -> bool:
     ) and "_l_" not in normalized and "wedges_l" not in normalized and "wedge_l" not in normalized
 
 
+def _is_l_eye(name: str) -> bool:
+    normalized = _normalize_name(name)
+    if "wedge" in normalized:
+        return False
+    if "lopoly_head" in normalized or "lopoly_body" in normalized:
+        return False
+    return any(
+        token in normalized
+        for token in ("eyes_l", "_eyes_l_", "eyes_l_")
+    ) and "wedges" not in normalized
+
+
+def _is_r_eye(name: str) -> bool:
+    normalized = _normalize_name(name)
+    if "wedge" in normalized:
+        return False
+    if "lopoly_head" in normalized or "lopoly_body" in normalized:
+        return False
+    return any(
+        token in normalized
+        for token in ("eyes_r", "_eyes_r_", "eyes_r_")
+    ) and "wedges" not in normalized
+
+
 def _is_head(name: str) -> bool:
     normalized = _normalize_name(name)
     if "eyewedge" in normalized or "eye_wedge" in normalized:
@@ -114,7 +138,13 @@ def _is_head(name: str) -> bool:
 
 
 def classify_imported_meshes(objects, scene=None, filename: str = "") -> dict[str, bpy.types.Object | None]:
-    result = {"head": None, "l_wedge": None, "r_wedge": None}
+    result = {
+        "head": None,
+        "l_wedge": None,
+        "r_wedge": None,
+        "l_eye": None,
+        "r_eye": None,
+    }
     unmatched_meshes = []
 
     for obj in objects:
@@ -130,6 +160,14 @@ def classify_imported_meshes(objects, scene=None, filename: str = "") -> dict[st
             result["r_wedge"] = obj
             if scene is not None:
                 log(scene, f"Classified R wedge: '{obj.name}'", force=True)
+        elif _is_l_eye(name):
+            result["l_eye"] = obj
+            if scene is not None:
+                log(scene, f"Classified L eye: '{obj.name}'", force=True)
+        elif _is_r_eye(name):
+            result["r_eye"] = obj
+            if scene is not None:
+                log(scene, f"Classified R eye: '{obj.name}'", force=True)
         elif _is_head(name):
             result["head"] = obj
             if scene is not None:

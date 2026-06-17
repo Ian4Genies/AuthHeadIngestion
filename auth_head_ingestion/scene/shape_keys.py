@@ -40,6 +40,12 @@ def iter_batch_target_objects(scene):
     if batch.apply_r_wedge:
         for slot_id in RIGHT_WEDGE_SLOTS:
             yield from yield_obj(get_registered_object(scene, slot_id))
+    if batch.apply_eyes:
+        for slot_id in ("l_eyes", "r_eyes"):
+            yield from yield_obj(get_registered_object(scene, slot_id))
+    if batch.apply_hd_eyes:
+        for slot_id in ("l_hd_eyes", "r_hd_eyes"):
+            yield from yield_obj(get_registered_object(scene, slot_id))
 
 
 def zero_auth_shape_keys(scene) -> None:

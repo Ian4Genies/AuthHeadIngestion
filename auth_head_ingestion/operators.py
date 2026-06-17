@@ -74,7 +74,7 @@ class AUTHHEAD_OT_assign_all_from_selection(bpy.types.Operator):
     bl_label = "Auto-Match Selection"
     bl_description = (
         "Try to match selected objects to slots by name "
-        "(head, eye wedge, bake wedge, render wedge)"
+        "(head, wedges, eyes, hd eyes, bake/render wedges)"
     )
     bl_options = {"REGISTER", "UNDO"}
 
@@ -88,6 +88,10 @@ class AUTHHEAD_OT_assign_all_from_selection(bpy.types.Operator):
             "head": "head",
             "l_eye_wedge": ("l eye wedge", "left eye wedge", "eye wedge l"),
             "r_eye_wedge": ("r eye wedge", "right eye wedge", "eye wedge r"),
+            "l_eyes": ("l eyes", "left eyes", "eyes l", "eye l"),
+            "r_eyes": ("r eyes", "right eyes", "eyes r", "eye r"),
+            "l_hd_eyes": ("l hd eye", "left hd eye", "hd eye l", "hd_eye_l"),
+            "r_hd_eyes": ("r hd eye", "right hd eye", "hd eye r", "hd_eye_r"),
             "l_bake_wedge": ("l bake wedge", "left bake wedge", "bake wedge l"),
             "r_bake_wedge": ("r bake wedge", "right bake wedge", "bake wedge r"),
             "l_render_wedge": ("l render wedge", "left render wedge", "render wedge l"),

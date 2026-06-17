@@ -56,6 +56,30 @@ class AUTHHEAD_PG_SceneObjects(PropertyGroup):
         type=bpy.types.Object,
         poll=mesh_object_poll,
     )
+    l_eyes: PointerProperty(
+        name="L Eyes",
+        description="Left eye mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
+    r_eyes: PointerProperty(
+        name="R Eyes",
+        description="Right eye mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
+    l_hd_eyes: PointerProperty(
+        name="L HD Eyes",
+        description="Left HD eye mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
+    r_hd_eyes: PointerProperty(
+        name="R HD Eyes",
+        description="Right HD eye mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
 
 
 SLOT_SECTIONS = (
@@ -67,11 +91,27 @@ SLOT_SECTIONS = (
         ),
     ),
     (
-        "Eyes",
+        "Wedges",
         "HIDE_OFF",
         (
             ("l_eye_wedge", "L Eye Wedge"),
             ("r_eye_wedge", "R Eye Wedge"),
+        ),
+    ),
+    (
+        "Eyes",
+        "VIEWZOOM",
+        (
+            ("l_eyes", "L Eyes"),
+            ("r_eyes", "R Eyes"),
+        ),
+    ),
+    (
+        "HD Eyes",
+        "VIEWZOOM",
+        (
+            ("l_hd_eyes", "L HD Eyes"),
+            ("r_hd_eyes", "R HD Eyes"),
         ),
     ),
     (
@@ -137,6 +177,16 @@ class AUTHHEAD_PG_BatchLoad(PropertyGroup):
     apply_r_wedge: BoolProperty(
         name="R Wedge",
         description="Apply imported right eye wedge to all right wedge targets",
+        default=True,
+    )
+    apply_eyes: BoolProperty(
+        name="Eyes",
+        description="Apply imported eye meshes to registered L/R eye targets",
+        default=True,
+    )
+    apply_hd_eyes: BoolProperty(
+        name="HD Eyes",
+        description="Apply imported eye meshes to registered L/R HD eye targets",
         default=True,
     )
 

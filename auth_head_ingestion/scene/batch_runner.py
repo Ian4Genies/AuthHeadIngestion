@@ -1,8 +1,24 @@
-from ..core.targets import HEAD_SLOT, LEFT_WEDGE_SLOTS, RIGHT_WEDGE_SLOTS
-from .debug_log import clear_log, log, log_exception, log_object
+from ..core.targets import (
+    HEAD_SLOT,
+    LEFT_WEDGE_SLOTS,
+    RIGHT_WEDGE_SLOTS,
+)
+from .debug_log import log, log_exception, log_object
 from .fbx_import import classify_imported_meshes, cleanup_import, import_fbx
 from .registry import get_registered_object
 from .shape_keys import add_shape_from_mesh, set_active_preview_shape_key, zero_auth_shape_keys
+
+
+def _any_apply_enabled(batch) -> bool:
+    return any(
+        (
+            batch.apply_head,
+            batch.apply_l_wedge,
+            batch.apply_r_wedge,
+            batch.apply_eyes,
+            batch.apply_hd_eyes,
+        )
+    )
 
 
 def validate_batch_ready(scene) -> list[str]:
@@ -29,8 +45,18 @@ def validate_batch_ready(scene) -> list[str]:
             if get_registered_object(scene, slot_id) is None:
                 errors.append(f"Register {slot_id.replace('_', ' ')}")
 
-    if not batch.apply_head and not batch.apply_l_wedge and not batch.apply_r_wedge:
-        errors.append("Enable at least one source target (Head, L Wedge, or R Wedge)")
+    if batch.apply_eyes:
+        for slot_id in ("l_eyes", "r_eyes"):
+            if get_registered_object(scene, slot_id) is None:
+                errors.append(f"Register {slot_id.replace('_', ' ')}")
+
+    if batch.apply_hd_eyes:
+        for slot_id in ("l_hd_eyes", "r_hd_eyes"):
+            if get_registered_object(scene, slot_id) is None:
+                errors.append(f"Register {slot_id.replace('_', ' ')}")
+
+    if not _any_apply_enabled(batch):
+        errors.append("Enable at least one batch source target")
 
     return errors
 
@@ -38,7 +64,13 @@ def validate_batch_ready(scene) -> list[str]:
 def log_batch_settings(scene) -> None:
     batch = scene.auth_head_batch
     log(scene, "─── Batch settings ───", force=True)
-    log(scene, f"apply_head={batch.apply_head} apply_l_wedge={batch.apply_l_wedge} apply_r_wedge={batch.apply_r_wedge}", force=True)
+    log(
+        scene,
+        f"apply_head={batch.apply_head} apply_l_wedge={batch.apply_l_wedge} "
+        f"apply_r_wedge={batch.apply_r_wedge} apply_eyes={batch.apply_eyes} "
+        f"apply_hd_eyes={batch.apply_hd_eyes}",
+        force=True,
+    )
 
     if batch.apply_head:
         log_object(scene, "Registered head target", get_registered_object(scene, HEAD_SLOT))
@@ -48,6 +80,28 @@ def log_batch_settings(scene) -> None:
     if batch.apply_r_wedge:
         for slot_id in RIGHT_WEDGE_SLOTS:
             log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
+    if batch.apply_eyes:
+        for slot_id in ("l_eyes", "r_eyes"):
+            log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
+    if batch.apply_hd_eyes:
+        for slot_id in ("l_hd_eyes", "r_hd_eyes"):
+            log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
+
+
+def _apply_eye_side(
+    scene,
+    sources: dict,
+    *,
+    side: str,
+    shape_key_name: str,
+    target_slot: str,
+    label: str,
+) -> None:
+    source = sources[f"{side}_eye"]
+    if source is None:
+        raise ValueError(f"{label} eye mesh not found in FBX")
+    target = get_registered_object(scene, target_slot)
+    add_shape_from_mesh(target, source, shape_key_name, scene=scene)
 
 
 def process_fbx_item(scene, item) -> dict:
@@ -61,7 +115,7 @@ def process_fbx_item(scene, item) -> dict:
     try:
         sources = classify_imported_meshes(imported_objects, scene=scene, filename=item.filename)
         applied = []
-        wedge_results = []
+        slot_results = []
 
         for slot, source in sources.items():
             if source is not None:
@@ -83,9 +137,9 @@ def process_fbx_item(scene, item) -> dict:
                 target = get_registered_object(scene, slot_id)
                 try:
                     add_shape_from_mesh(target, source, shape_key_name, scene=scene)
-                    wedge_results.append(f"{slot_id}:ok")
+                    slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:
-                    wedge_results.append(f"{slot_id}:FAIL({exc})")
+                    slot_results.append(f"{slot_id}:FAIL({exc})")
                     log_exception(scene, f"L wedge apply failed on {slot_id}", exc)
                     raise
             applied.append("L wedge")
@@ -98,15 +152,51 @@ def process_fbx_item(scene, item) -> dict:
                 target = get_registered_object(scene, slot_id)
                 try:
                     add_shape_from_mesh(target, source, shape_key_name, scene=scene)
-                    wedge_results.append(f"{slot_id}:ok")
+                    slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:
-                    wedge_results.append(f"{slot_id}:FAIL({exc})")
+                    slot_results.append(f"{slot_id}:FAIL({exc})")
                     log_exception(scene, f"R wedge apply failed on {slot_id}", exc)
                     raise
             applied.append("R wedge")
 
-        if wedge_results:
-            log(scene, f"Wedge slot results: {', '.join(wedge_results)}")
+        if batch.apply_eyes:
+            for side, slot_id in (("l", "l_eyes"), ("r", "r_eyes")):
+                try:
+                    _apply_eye_side(
+                        scene,
+                        sources,
+                        side=side,
+                        shape_key_name=shape_key_name,
+                        target_slot=slot_id,
+                        label=side.upper(),
+                    )
+                    slot_results.append(f"{slot_id}:ok")
+                except Exception as exc:
+                    slot_results.append(f"{slot_id}:FAIL({exc})")
+                    log_exception(scene, f"Eye apply failed on {slot_id}", exc)
+                    raise
+            applied.append("eyes")
+
+        if batch.apply_hd_eyes:
+            for side, slot_id in (("l", "l_hd_eyes"), ("r", "r_hd_eyes")):
+                try:
+                    _apply_eye_side(
+                        scene,
+                        sources,
+                        side=side,
+                        shape_key_name=shape_key_name,
+                        target_slot=slot_id,
+                        label=f"{side.upper()} HD",
+                    )
+                    slot_results.append(f"{slot_id}:ok")
+                except Exception as exc:
+                    slot_results.append(f"{slot_id}:FAIL({exc})")
+                    log_exception(scene, f"HD eye apply failed on {slot_id}", exc)
+                    raise
+            applied.append("HD eyes")
+
+        if slot_results:
+            log(scene, f"Slot results: {', '.join(slot_results)}")
 
         set_active_preview_shape_key(scene, shape_key_name)
 
@@ -119,7 +209,7 @@ def process_fbx_item(scene, item) -> dict:
             "success": True,
             "shape_key_name": shape_key_name,
             "applied": applied,
-            "wedge_results": wedge_results,
+            "slot_results": slot_results,
         }
     finally:
         log(scene, "Cleaning up imported FBX data", force=True)

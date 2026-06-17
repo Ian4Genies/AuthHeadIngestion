@@ -12,4 +12,20 @@ RIGHT_WEDGE_SLOTS = (
     "r_render_wedge",
 )
 
-ALL_SHAPE_KEY_TARGETS = (HEAD_SLOT,) + LEFT_WEDGE_SLOTS + RIGHT_WEDGE_SLOTS
+LEFT_EYE_SLOTS = (
+    "l_eyes",
+    "l_hd_eyes",
+)
+
+RIGHT_EYE_SLOTS = (
+    "r_eyes",
+    "r_hd_eyes",
+)
+
+ALL_SHAPE_KEY_TARGETS = (
+    (HEAD_SLOT,)
+    + LEFT_WEDGE_SLOTS
+    + RIGHT_WEDGE_SLOTS
+    + LEFT_EYE_SLOTS
+    + RIGHT_EYE_SLOTS
+)

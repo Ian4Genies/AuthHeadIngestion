@@ -200,6 +200,8 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         row.prop(batch, "apply_head", toggle=True, icon="USER")
         row.prop(batch, "apply_l_wedge", toggle=True, icon="TRIA_LEFT")
         row.prop(batch, "apply_r_wedge", toggle=True, icon="TRIA_RIGHT")
+        row.prop(batch, "apply_eyes", toggle=True, icon="VIEWZOOM")
+        row.prop(batch, "apply_hd_eyes", toggle=True, icon="VIEWZOOM")
 
         targets = run_box.box()
         targets.label(text="Target Mapping", icon="ARROW_LEFTRIGHT")
@@ -211,6 +213,10 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             col.label(text="L Wedge  →  eye / bake / render (L)", icon="DOT")
         if batch.apply_r_wedge:
             col.label(text="R Wedge  →  eye / bake / render (R)", icon="DOT")
+        if batch.apply_eyes:
+            col.label(text="L/R Eye  →  registered eyes (L/R)", icon="DOT")
+        if batch.apply_hd_eyes:
+            col.label(text="L/R Eye  →  registered HD eyes (L/R)", icon="DOT")
 
         if batch.is_running:
             progress = run_box.box()
@@ -237,7 +243,11 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             run_row = run_box.row(align=True)
             run_row.scale_y = 1.45
             run_row.enabled = included_fbx_count(context.scene) > 0 and bool(
-                batch.apply_head or batch.apply_l_wedge or batch.apply_r_wedge
+                batch.apply_head
+                or batch.apply_l_wedge
+                or batch.apply_r_wedge
+                or batch.apply_eyes
+                or batch.apply_hd_eyes
             )
             run_row.operator(
                 "auth_head_ingestion.run_batch_load",

@@ -124,6 +124,53 @@ class AUTHHEAD_PG_BatchLoad(PropertyGroup):
     fbx_files: CollectionProperty(type=AUTHHEAD_PG_FbxFile)
     fbx_list_index: IntProperty(name="FBX List Index", default=0)
 
+    apply_head: BoolProperty(
+        name="Head",
+        description="Apply imported head mesh as a shape key on the registered head",
+        default=True,
+    )
+    apply_l_wedge: BoolProperty(
+        name="L Wedge",
+        description="Apply imported left eye wedge to all left wedge targets",
+        default=True,
+    )
+    apply_r_wedge: BoolProperty(
+        name="R Wedge",
+        description="Apply imported right eye wedge to all right wedge targets",
+        default=True,
+    )
+
+    debug_verbose: BoolProperty(
+        name="Debug Output",
+        description="Print detailed batch diagnostics to the console and log panel",
+        default=True,
+    )
+    debug_log: StringProperty(
+        name="Debug Log",
+        description="Recent batch debug messages",
+        default="",
+    )
+    debug_log_file: StringProperty(
+        name="Debug Log File",
+        description="Path to the on-disk batch debug JSON log",
+        default="",
+        subtype="FILE_PATH",
+    )
+
+    preview_shape_key: StringProperty(
+        name="Preview Shape Key",
+        description="Currently previewed auth shape key from batch processing",
+        default="",
+    )
+
+    is_running: BoolProperty(name="Batch Running", default=False)
+    cancel_requested: BoolProperty(name="Cancel Requested", default=False, options={"HIDDEN"})
+    progress: bpy.props.FloatProperty(name="Progress", subtype="FACTOR", min=0.0, max=1.0)
+    status_message: StringProperty(name="Status", default="")
+    processed_count: IntProperty(name="Processed", default=0)
+    failed_count: IntProperty(name="Failed", default=0)
+    run_total: IntProperty(name="Run Total", default=0)
+
 
 CLASSES = (
     AUTHHEAD_PG_SceneObjects,

@@ -6,6 +6,9 @@ __pycache__/
 dist/
 build/
 blender_vscode_development/
+logs/*
+!logs/.gitkeep
+!logs/README.txt
 Thumbs.db
 Desktop.ini
 .DS_Store

@@ -11,16 +11,22 @@ if "bpy" in locals():
     importlib.reload(scene)
     importlib.reload(scene.registry)
     importlib.reload(scene.batch_load)
+    importlib.reload(scene.fbx_import)
+    importlib.reload(scene.shape_keys)
+    importlib.reload(scene.batch_runner)
+    importlib.reload(scene.debug_log)
+    importlib.reload(core.targets)
 
 import bpy
 
 from . import core, operators, panels, properties, ui_lists
 from .scene import registry
+from .scene.debug_log import ensure_log_directory, log_dir
 
 bl_info = {
     "name": "Auth Head Ingestion",
     "author": "Genies",
-    "version": (0, 2, 0),
+    "version": (0, 3, 0),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > Auth Head",
     "description": "Register pipeline scene objects and batch-load authored head FBX as shape keys",
@@ -44,6 +50,9 @@ def register():
     bpy.types.Scene.auth_head_batch = bpy.props.PointerProperty(
         type=properties.AUTHHEAD_PG_BatchLoad,
     )
+
+    log_path = ensure_log_directory()
+    print(f"[AuthHeadIngestion] Log directory: {log_path}")
 
 
 def unregister():

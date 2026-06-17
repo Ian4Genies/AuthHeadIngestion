@@ -181,6 +181,162 @@ class AUTHHEAD_OT_fbx_exclude_all(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AUTHHEAD_OT_run_batch_load(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.run_batch_load"
+    bl_label = "Run Batch"
+    bl_description = "Import queued FBX files and apply shape keys to registered meshes"
+    bl_options = {"REGISTER"}
+
+    _timer = None
+    _queue = None
+    _index = 0
+
+    @classmethod
+    def poll(cls, context):
+        batch = context.scene.auth_head_batch
+        return not batch.is_running
+
+    def invoke(self, context, event):
+        from .scene.batch_runner import log_batch_settings, queued_fbx_items, validate_batch_ready
+        from .scene.debug_log import begin_file_session, clear_log, log
+        from .scene.shape_keys import zero_auth_shape_keys
+
+        errors = validate_batch_ready(context.scene)
+        if errors:
+            self.report({"ERROR"}, errors[0])
+            return {"CANCELLED"}
+
+        batch = context.scene.auth_head_batch
+        self._queue = queued_fbx_items(context.scene)
+        self._index = 0
+
+        clear_log(context.scene)
+        begin_file_session(context.scene, queued_count=len(self._queue))
+        log(context.scene, f"Batch start — {len(self._queue)} file(s) queued", force=True)
+        log_batch_settings(context.scene)
+        zero_auth_shape_keys(context.scene)
+        batch.preview_shape_key = ""
+
+        batch.is_running = True
+        batch.cancel_requested = False
+        batch.progress = 0.0
+        batch.processed_count = 0
+        batch.failed_count = 0
+        batch.run_total = len(self._queue)
+        batch.status_message = "Starting batch…"
+
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.01, window=context.window)
+        wm.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        batch = context.scene.auth_head_batch
+
+        if event.type == "ESC" or batch.cancel_requested:
+            return self._finish(context, cancelled=True)
+
+        if event.type != "TIMER":
+            return {"RUNNING_MODAL"}
+
+        if self._index >= len(self._queue):
+            return self._finish(context, cancelled=False)
+
+        item = self._queue[self._index]
+        batch.status_message = f"Processing {item.filename} ({self._index + 1}/{len(self._queue)})"
+
+        from .scene.batch_runner import process_fbx_item
+        from .scene.debug_log import log_exception
+
+        try:
+            process_fbx_item(context.scene, item)
+            batch.processed_count += 1
+        except Exception as exc:
+            batch.failed_count += 1
+            batch.status_message = f"Failed: {item.filename} — {exc}"
+            log_exception(context.scene, f"Batch failed on {item.filename}", exc)
+            if context.scene.auth_head_batch.debug_verbose:
+                self.report({"ERROR"}, str(exc))
+
+        self._index += 1
+        batch.progress = self._index / len(self._queue)
+
+        for area in context.screen.areas:
+            area.tag_redraw()
+
+        return {"RUNNING_MODAL"}
+
+    def _finish(self, context, *, cancelled: bool):
+        from .scene.debug_log import end_file_session, log, log_json_path
+
+        batch = context.scene.auth_head_batch
+        wm = context.window_manager
+
+        if self._timer:
+            wm.event_timer_remove(self._timer)
+            self._timer = None
+
+        batch.is_running = False
+        batch.cancel_requested = False
+        batch.progress = 1.0 if not cancelled else batch.progress
+
+        if cancelled:
+            batch.status_message = (
+                f"Cancelled — {batch.processed_count} done, {batch.failed_count} failed"
+            )
+            log(context.scene, batch.status_message, level="WARN", force=True)
+            end_file_session(
+                context.scene,
+                status="cancelled",
+                processed_count=batch.processed_count,
+                failed_count=batch.failed_count,
+            )
+        else:
+            batch.status_message = (
+                f"Complete — {batch.processed_count} applied, {batch.failed_count} failed"
+            )
+            log(context.scene, batch.status_message, force=True)
+            end_file_session(
+                context.scene,
+                status="complete",
+                processed_count=batch.processed_count,
+                failed_count=batch.failed_count,
+            )
+
+        self.report({"INFO"}, f"Debug log: {log_json_path()}")
+
+        for area in context.screen.areas:
+            area.tag_redraw()
+
+        return {"CANCELLED"} if cancelled else {"FINISHED"}
+
+
+class AUTHHEAD_OT_cancel_batch_load(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.cancel_batch_load"
+    bl_label = "Cancel Batch"
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return context.scene.auth_head_batch.is_running
+
+    def execute(self, context):
+        context.scene.auth_head_batch.cancel_requested = True
+        return {"FINISHED"}
+
+
+class AUTHHEAD_OT_clear_debug_log(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.clear_debug_log"
+    bl_label = "Clear Debug Log"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        from .scene.debug_log import clear_log
+
+        clear_log(context.scene)
+        return {"FINISHED"}
+
+
 CLASSES = (
     AUTHHEAD_OT_assign_scene_object,
     AUTHHEAD_OT_clear_scene_object,
@@ -190,4 +346,7 @@ CLASSES = (
     AUTHHEAD_OT_compare_to_loaded,
     AUTHHEAD_OT_fbx_include_all,
     AUTHHEAD_OT_fbx_exclude_all,
+    AUTHHEAD_OT_run_batch_load,
+    AUTHHEAD_OT_cancel_batch_load,
+    AUTHHEAD_OT_clear_debug_log,
 )

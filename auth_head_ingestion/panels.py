@@ -2,6 +2,7 @@ import bpy
 
 from .properties import ALL_SLOT_IDS, SLOT_SECTIONS
 from .scene.batch_load import included_fbx_count
+from .scene.debug_log import log_dir
 from .scene.registry import all_slots_filled, registered_count
 
 
@@ -185,8 +186,94 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             "fbx_files",
             batch,
             "fbx_list_index",
-            rows=10,
+            rows=8,
         )
+
+        layout.separator()
+
+        run_box = layout.box()
+        run_box.label(text="Batch Apply", icon="PLAY")
+
+        sources = run_box.box()
+        sources.label(text="Source Meshes", icon="MODIFIER_DATA")
+        row = sources.row(align=True)
+        row.prop(batch, "apply_head", toggle=True, icon="USER")
+        row.prop(batch, "apply_l_wedge", toggle=True, icon="TRIA_LEFT")
+        row.prop(batch, "apply_r_wedge", toggle=True, icon="TRIA_RIGHT")
+
+        targets = run_box.box()
+        targets.label(text="Target Mapping", icon="ARROW_LEFTRIGHT")
+        col = targets.column(align=True)
+        col.scale_y = 0.9
+        if batch.apply_head:
+            col.label(text="Head  →  registered head", icon="DOT")
+        if batch.apply_l_wedge:
+            col.label(text="L Wedge  →  eye / bake / render (L)", icon="DOT")
+        if batch.apply_r_wedge:
+            col.label(text="R Wedge  →  eye / bake / render (R)", icon="DOT")
+
+        if batch.is_running:
+            progress = run_box.box()
+            col = progress.column(align=True)
+            col.label(text=batch.status_message, icon="TIME")
+            if batch.preview_shape_key:
+                col.label(text=f"Preview: {batch.preview_shape_key}", icon="SHAPEKEY_DATA")
+            col.prop(batch, "progress", text="Progress", slider=True)
+            stats = col.row(align=True)
+            stats.label(text=f"{batch.processed_count} ok")
+            stats.label(text=f"{batch.failed_count} failed")
+            stats.label(text=f"{batch.run_total} total")
+            cancel = col.row(align=True)
+            cancel.scale_y = 1.3
+            cancel.operator(
+                "auth_head_ingestion.cancel_batch_load",
+                text="Cancel",
+                icon="PANEL_CLOSE",
+            )
+        else:
+            if batch.status_message:
+                run_box.label(text=batch.status_message, icon="INFO")
+
+            run_row = run_box.row(align=True)
+            run_row.scale_y = 1.45
+            run_row.enabled = included_fbx_count(context.scene) > 0 and bool(
+                batch.apply_head or batch.apply_l_wedge or batch.apply_r_wedge
+            )
+            run_row.operator(
+                "auth_head_ingestion.run_batch_load",
+                text=f"Run Batch ({included_fbx_count(context.scene)} files)",
+                icon="PLAY",
+            )
+
+        debug_box = layout.box()
+        header = debug_box.row(align=True)
+        header.prop(batch, "debug_verbose", text="Debug Output", icon="CONSOLE")
+        header.operator(
+            "auth_head_ingestion.clear_debug_log",
+            text="",
+            icon="TRASH",
+        )
+
+        debug_box.label(text=f"Log folder: {log_dir()}", icon="FILE_FOLDER", translate=False)
+
+        if batch.debug_log_file:
+            debug_box.label(text=f"Log: {batch.debug_log_file}", icon="FILE_TEXT", translate=False)
+
+        if batch.debug_verbose and batch.debug_log:
+            log_col = debug_box.column(align=True)
+            log_col.scale_y = 0.75
+            for line in batch.debug_log.splitlines()[-18:]:
+                if "[ERROR]" in line or "[WARN]" in line:
+                    row = log_col.row()
+                    row.alert = True
+                    row.label(text=line, translate=False)
+                else:
+                    log_col.label(text=line, translate=False)
+            if len(batch.debug_log.splitlines()) > 18:
+                debug_box.label(
+                    text="(panel preview — full log in logs/batch_debug.json)",
+                    icon="INFO",
+                )
 
 
 CLASSES = (

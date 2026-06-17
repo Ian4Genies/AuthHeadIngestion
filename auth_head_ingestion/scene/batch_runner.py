@@ -6,7 +6,12 @@ from ..core.targets import (
 from .debug_log import log, log_exception, log_object
 from .fbx_import import classify_imported_meshes, cleanup_import, import_fbx
 from .registry import get_registered_object
-from .shape_keys import add_shape_from_mesh, set_active_preview_shape_key, zero_auth_shape_keys
+from .shape_keys import (
+    add_shape_from_mesh,
+    log_shared_mesh_targets,
+    set_active_preview_shape_key,
+    zero_auth_shape_keys,
+)
 
 
 def _any_apply_enabled(batch) -> bool:
@@ -87,6 +92,8 @@ def log_batch_settings(scene) -> None:
         for slot_id in ("l_hd_eyes", "r_hd_eyes"):
             log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
 
+    log_shared_mesh_targets(scene)
+
 
 def _apply_eye_side(
     scene,
@@ -96,12 +103,19 @@ def _apply_eye_side(
     shape_key_name: str,
     target_slot: str,
     label: str,
+    applied_mesh_keys: set,
 ) -> None:
     source = sources[f"{side}_eye"]
     if source is None:
         raise ValueError(f"{label} eye mesh not found in FBX")
     target = get_registered_object(scene, target_slot)
-    add_shape_from_mesh(target, source, shape_key_name, scene=scene)
+    add_shape_from_mesh(
+        target,
+        source,
+        shape_key_name,
+        scene=scene,
+        applied_mesh_keys=applied_mesh_keys,
+    )
 
 
 def process_fbx_item(scene, item) -> dict:
@@ -116,6 +130,7 @@ def process_fbx_item(scene, item) -> dict:
         sources = classify_imported_meshes(imported_objects, scene=scene, filename=item.filename)
         applied = []
         slot_results = []
+        applied_mesh_keys: set = set()
 
         for slot, source in sources.items():
             if source is not None:
@@ -126,7 +141,13 @@ def process_fbx_item(scene, item) -> dict:
             target = get_registered_object(scene, HEAD_SLOT)
             if source is None:
                 raise ValueError(f"Head mesh not found in {item.filename}")
-            add_shape_from_mesh(target, source, shape_key_name, scene=scene)
+            add_shape_from_mesh(
+                target,
+                source,
+                shape_key_name,
+                scene=scene,
+                applied_mesh_keys=applied_mesh_keys,
+            )
             applied.append("head")
 
         if batch.apply_l_wedge:
@@ -136,7 +157,13 @@ def process_fbx_item(scene, item) -> dict:
             for slot_id in LEFT_WEDGE_SLOTS:
                 target = get_registered_object(scene, slot_id)
                 try:
-                    add_shape_from_mesh(target, source, shape_key_name, scene=scene)
+                    add_shape_from_mesh(
+                        target,
+                        source,
+                        shape_key_name,
+                        scene=scene,
+                        applied_mesh_keys=applied_mesh_keys,
+                    )
                     slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:
                     slot_results.append(f"{slot_id}:FAIL({exc})")
@@ -151,7 +178,13 @@ def process_fbx_item(scene, item) -> dict:
             for slot_id in RIGHT_WEDGE_SLOTS:
                 target = get_registered_object(scene, slot_id)
                 try:
-                    add_shape_from_mesh(target, source, shape_key_name, scene=scene)
+                    add_shape_from_mesh(
+                        target,
+                        source,
+                        shape_key_name,
+                        scene=scene,
+                        applied_mesh_keys=applied_mesh_keys,
+                    )
                     slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:
                     slot_results.append(f"{slot_id}:FAIL({exc})")
@@ -169,6 +202,7 @@ def process_fbx_item(scene, item) -> dict:
                         shape_key_name=shape_key_name,
                         target_slot=slot_id,
                         label=side.upper(),
+                        applied_mesh_keys=applied_mesh_keys,
                     )
                     slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:
@@ -187,6 +221,7 @@ def process_fbx_item(scene, item) -> dict:
                         shape_key_name=shape_key_name,
                         target_slot=slot_id,
                         label=f"{side.upper()} HD",
+                        applied_mesh_keys=applied_mesh_keys,
                     )
                     slot_results.append(f"{slot_id}:ok")
                 except Exception as exc:

@@ -22,14 +22,52 @@ def _is_auth_shape_key(name: str) -> bool:
     return name.startswith(AUTH_SHAPE_KEY_PREFIX)
 
 
+def log_shared_mesh_targets(scene) -> None:
+    batch = scene.auth_head_batch
+    mesh_to_objects: dict[str, list[str]] = {}
+
+    def track(slot_id: str) -> None:
+        obj = get_registered_object(scene, slot_id)
+        if obj is None or obj.type != "MESH":
+            return
+        mesh_to_objects.setdefault(obj.data.name, []).append(f"{slot_id} ({obj.name})")
+
+    if batch.apply_head:
+        track(HEAD_SLOT)
+    if batch.apply_l_wedge:
+        for slot_id in LEFT_WEDGE_SLOTS:
+            track(slot_id)
+    if batch.apply_r_wedge:
+        for slot_id in RIGHT_WEDGE_SLOTS:
+            track(slot_id)
+    if batch.apply_eyes:
+        for slot_id in ("l_eyes", "r_eyes"):
+            track(slot_id)
+    if batch.apply_hd_eyes:
+        for slot_id in ("l_hd_eyes", "r_hd_eyes"):
+            track(slot_id)
+
+    for mesh_name, slots in sorted(mesh_to_objects.items()):
+        if len(slots) > 1:
+            log(
+                scene,
+                f"Shared mesh '{mesh_name}' used by: {', '.join(slots)}",
+                level="WARN",
+                force=True,
+            )
+
+
 def iter_batch_target_objects(scene):
     batch = scene.auth_head_batch
-    seen = set()
+    seen_meshes = set()
 
     def yield_obj(obj):
-        if obj is None or obj.name in seen:
+        if obj is None or obj.type != "MESH":
             return
-        seen.add(obj.name)
+        mesh_name = obj.data.name
+        if mesh_name in seen_meshes:
+            return
+        seen_meshes.add(mesh_name)
         yield obj
 
     if batch.apply_head:
@@ -74,21 +112,51 @@ def set_active_preview_shape_key(scene, shape_key_name: str) -> None:
         log(scene, f"Preview shape key set to '{shape_key_name}'", force=True)
 
 
+def _write_shape_key_coords(
+    key_block,
+    target_obj: bpy.types.Object,
+    source_obj: bpy.types.Object,
+) -> float:
+    source_mesh = source_obj.data
+    src_matrix = source_obj.matrix_world
+    tgt_matrix_inv = target_obj.matrix_world.inverted()
+
+    max_delta = 0.0
+    for index, sk_vert in enumerate(key_block.data):
+        world_co = src_matrix @ source_mesh.vertices[index].co
+        local_co = tgt_matrix_inv @ world_co
+        sk_vert.co = local_co
+        basis_co = target_obj.data.vertices[index].co
+        max_delta = max(max_delta, (local_co - basis_co).length)
+    return max_delta
+
+
 def add_shape_from_mesh(
     target_obj: bpy.types.Object,
     source_obj: bpy.types.Object,
     key_name: str,
     scene=None,
-) -> None:
+    applied_mesh_keys: set | None = None,
+) -> str:
+    mesh_name = target_obj.data.name
+    mesh_token = (mesh_name, key_name)
+
+    if applied_mesh_keys is not None and mesh_token in applied_mesh_keys:
+        if scene is not None:
+            log(
+                scene,
+                f"Skipping '{target_obj.name}' — '{key_name}' already applied to mesh '{mesh_name}'",
+                force=True,
+            )
+        return "skipped_shared_mesh"
+
     if scene is not None:
         log(
             scene,
             f"Applying shape key '{key_name}': "
-            f"source='{source_obj.name}' → target='{target_obj.name}'",
+            f"source='{source_obj.name}' → target='{target_obj.name}' (mesh='{mesh_name}')",
+            force=True,
         )
-
-    if shape_key_exists(target_obj, key_name):
-        raise ValueError(f"Shape key '{key_name}' already exists on '{target_obj.name}'")
 
     source_mesh = source_obj.data
     target_vert_count = len(target_obj.data.vertices)
@@ -101,6 +169,7 @@ def add_shape_from_mesh(
                 f"Vertex count mismatch: target '{target_obj.name}'={target_vert_count} "
                 f"source '{source_obj.name}'={source_vert_count}",
                 level="ERROR",
+                force=True,
             )
         raise ValueError(
             f"Vertex count mismatch on '{target_obj.name}' "
@@ -110,35 +179,37 @@ def add_shape_from_mesh(
     had_shape_keys = target_obj.data.shape_keys is not None
     ensure_basis(target_obj)
     if scene is not None and not had_shape_keys:
-        log(scene, f"Created Basis shape key on '{target_obj.name}'")
+        log(scene, f"Created Basis shape key on '{target_obj.name}'", force=True)
 
-    key_block = target_obj.shape_key_add(name=key_name, from_mix=False)
-
-    src_matrix = source_obj.matrix_world
-    tgt_matrix_inv = target_obj.matrix_world.inverted()
+    if shape_key_exists(target_obj, key_name):
+        key_block = target_obj.data.shape_keys.key_blocks[key_name]
+        action = "updated"
+    else:
+        key_block = target_obj.shape_key_add(name=key_name, from_mix=False)
+        action = "added"
 
     if scene is not None:
-        src_t = src_matrix.translation
+        src_t = source_obj.matrix_world.translation
         tgt_t = target_obj.matrix_world.translation
         log(
             scene,
             f"Transforms — source world ({src_t.x:.4f}, {src_t.y:.4f}, {src_t.z:.4f}) "
             f"target world ({tgt_t.x:.4f}, {tgt_t.y:.4f}, {tgt_t.z:.4f})",
+            force=True,
         )
 
-    max_delta = 0.0
-    for index, sk_vert in enumerate(key_block.data):
-        world_co = src_matrix @ source_mesh.vertices[index].co
-        local_co = tgt_matrix_inv @ world_co
-        sk_vert.co = local_co
-        basis_co = target_obj.data.vertices[index].co
-        max_delta = max(max_delta, (local_co - basis_co).length)
+    max_delta = _write_shape_key_coords(key_block, target_obj, source_obj)
+    key_block.value = 0.0
+
+    if applied_mesh_keys is not None:
+        applied_mesh_keys.add(mesh_token)
 
     if scene is not None:
         log(
             scene,
-            f"Shape key '{key_name}' added on '{target_obj.name}' "
+            f"Shape key '{key_name}' {action} on '{target_obj.name}' "
             f"(verts={len(key_block.data)}, max delta from basis={max_delta:.6f})",
+            force=True,
         )
 
-    key_block.value = 0.0
+    return action

@@ -1,6 +1,7 @@
 import bpy
 
 from .properties import ALL_SLOT_IDS, SLOT_SECTIONS
+from .preferences import restore_fbx_directory_if_empty
 from .scene.batch_load import included_fbx_count
 from .scene.debug_log import log_dir
 from .scene.registry import all_slots_filled, registered_count
@@ -134,6 +135,8 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         self.layout.label(text=f"{included}/{total}", icon="SHAPEKEY_DATA")
 
     def draw(self, context):
+        restore_fbx_directory_if_empty(context.scene)
+
         layout = self.layout
         layout.use_property_split = False
         layout.use_property_decorate = False
@@ -274,7 +277,7 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         if batch.debug_log_file:
             debug_box.label(text=f"Log: {batch.debug_log_file}", icon="FILE_TEXT", translate=False)
 
-        if batch.debug_verbose and batch.debug_log:
+        if batch.debug_verbose and batch.debug_log:n
             log_col = debug_box.column(align=True)
             log_col.scale_y = 0.75
             for line in batch.debug_log.splitlines()[-18:]:

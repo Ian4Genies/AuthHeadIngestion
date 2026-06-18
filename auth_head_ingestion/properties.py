@@ -4,8 +4,11 @@ from bpy.types import PropertyGroup
 
 
 def _on_fbx_directory_changed(self, context):
+    from .preferences import save_fbx_directory
     from .scene.batch_load import rescan_fbx_directory
 
+    if self.fbx_directory:
+        save_fbx_directory(self.fbx_directory)
     rescan_fbx_directory(context.scene)
 
 

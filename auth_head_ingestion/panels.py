@@ -277,7 +277,7 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         if batch.debug_log_file:
             debug_box.label(text=f"Log: {batch.debug_log_file}", icon="FILE_TEXT", translate=False)
 
-        if batch.debug_verbose and batch.debug_log:n
+        if batch.debug_verbose and batch.debug_log:
             log_col = debug_box.column(align=True)
             log_col.scale_y = 0.75
             for line in batch.debug_log.splitlines()[-18:]:

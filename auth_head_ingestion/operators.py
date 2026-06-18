@@ -341,6 +341,25 @@ class AUTHHEAD_OT_clear_debug_log(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AUTHHEAD_OT_copy_debug_log(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.copy_debug_log"
+    bl_label = "Copy Debug Log"
+    bl_description = "Copy the full batch debug log to the clipboard"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        from .scene.debug_log import get_log_text_for_clipboard
+
+        text = get_log_text_for_clipboard(context.scene)
+        if not text:
+            self.report({"WARNING"}, "No debug log available")
+            return {"CANCELLED"}
+
+        context.window_manager.clipboard = text
+        self.report({"INFO"}, "Debug log copied to clipboard")
+        return {"FINISHED"}
+
+
 CLASSES = (
     AUTHHEAD_OT_assign_scene_object,
     AUTHHEAD_OT_clear_scene_object,
@@ -353,4 +372,5 @@ CLASSES = (
     AUTHHEAD_OT_run_batch_load,
     AUTHHEAD_OT_cancel_batch_load,
     AUTHHEAD_OT_clear_debug_log,
+    AUTHHEAD_OT_copy_debug_log,
 )

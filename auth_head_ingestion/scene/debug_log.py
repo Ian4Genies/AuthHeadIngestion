@@ -11,6 +11,14 @@ _session: dict | None = None
 
 
 def _addon_root() -> str:
+    path = os.path.dirname(os.path.abspath(__file__))
+    while path and os.path.basename(path) != "auth_head_ingestion":
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    if os.path.basename(path) == "auth_head_ingestion":
+        return path
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -267,3 +275,17 @@ def clear_log(scene) -> None:
     for path in (log_txt_path(), log_json_path()):
         if os.path.isfile(path):
             os.remove(path)
+
+
+def get_log_text_for_clipboard(scene) -> str:
+    json_path = log_json_path()
+    if os.path.isfile(json_path):
+        with open(json_path, encoding="utf-8") as handle:
+            return handle.read()
+
+    txt_path = log_txt_path()
+    if os.path.isfile(txt_path):
+        with open(txt_path, encoding="utf-8") as handle:
+            return handle.read()
+
+    return scene.auth_head_batch.debug_log or ""

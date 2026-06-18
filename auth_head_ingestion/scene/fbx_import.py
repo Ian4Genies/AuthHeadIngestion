@@ -106,25 +106,37 @@ def _is_r_wedge(name: str) -> bool:
 
 def _is_l_eye(name: str) -> bool:
     normalized = _normalize_name(name)
-    if "wedge" in normalized:
+    if "wedge" in normalized or "boolean" in normalized:
         return False
     if "lopoly_head" in normalized or "lopoly_body" in normalized:
         return False
     return any(
         token in normalized
-        for token in ("eyes_l", "_eyes_l_", "eyes_l_")
+        for token in (
+            "eyes_l",
+            "_eyes_l_",
+            "eyes_l_",
+            "_eye_l_",
+            "eye_l_",
+        )
     ) and "wedges" not in normalized
 
 
 def _is_r_eye(name: str) -> bool:
     normalized = _normalize_name(name)
-    if "wedge" in normalized:
+    if "wedge" in normalized or "boolean" in normalized:
         return False
     if "lopoly_head" in normalized or "lopoly_body" in normalized:
         return False
     return any(
         token in normalized
-        for token in ("eyes_r", "_eyes_r_", "eyes_r_")
+        for token in (
+            "eyes_r",
+            "_eyes_r_",
+            "eyes_r_",
+            "_eye_r_",
+            "eye_r_",
+        )
     ) and "wedges" not in normalized
 
 

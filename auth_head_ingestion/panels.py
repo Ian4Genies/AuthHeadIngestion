@@ -259,6 +259,11 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         header = debug_box.row(align=True)
         header.prop(batch, "debug_verbose", text="Debug Output", icon="CONSOLE")
         header.operator(
+            "auth_head_ingestion.copy_debug_log",
+            text="",
+            icon="COPYDOWN",
+        )
+        header.operator(
             "auth_head_ingestion.clear_debug_log",
             text="",
             icon="TRASH",

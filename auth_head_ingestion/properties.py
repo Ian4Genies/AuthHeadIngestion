@@ -225,8 +225,52 @@ class AUTHHEAD_PG_BatchLoad(PropertyGroup):
     run_total: IntProperty(name="Run Total", default=0)
 
 
+class AUTHHEAD_PG_FacialFeature(PropertyGroup):
+    name: StringProperty(
+        name="Feature",
+        description="Facial feature name used in split shape key suffix",
+        default="",
+    )
+    mask_vertex_group: StringProperty(
+        name="Mask Vertex Group",
+        description="Vertex group on each mesh used as the normalized bake mask",
+        default="",
+    )
+
+
+class AUTHHEAD_PG_FeatureRegistration(PropertyGroup):
+    object_slot: StringProperty(name="Object Slot")
+    feature_name: StringProperty(name="Feature Name")
+    enabled: BoolProperty(
+        name="Enabled",
+        description="Bake this feature for the registered object",
+        default=False,
+    )
+    vertex_group_override: StringProperty(
+        name="Vertex Group Override",
+        description="Leave empty to use the feature mask vertex group name",
+        default="",
+    )
+
+
+class AUTHHEAD_PG_FacialFeatures(PropertyGroup):
+    features: CollectionProperty(type=AUTHHEAD_PG_FacialFeature)
+    feature_list_index: IntProperty(name="Feature Index", default=0)
+    registrations: CollectionProperty(type=AUTHHEAD_PG_FeatureRegistration)
+
+    bake_override_existing: BoolProperty(
+        name="Override Existing",
+        description="Replace split shape keys that already exist; otherwise skip them",
+        default=False,
+    )
+    bake_status: StringProperty(name="Bake Status", default="")
+
+
 CLASSES = (
     AUTHHEAD_PG_SceneObjects,
     AUTHHEAD_PG_FbxFile,
     AUTHHEAD_PG_BatchLoad,
+    AUTHHEAD_PG_FacialFeature,
+    AUTHHEAD_PG_FeatureRegistration,
+    AUTHHEAD_PG_FacialFeatures,
 )

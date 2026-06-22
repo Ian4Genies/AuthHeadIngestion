@@ -41,4 +41,30 @@ class AUTHHEAD_UL_fbx_files(bpy.types.UIList):
             layout.label(text="", icon="FILE_3D")
 
 
-CLASSES = (AUTHHEAD_UL_fbx_files,)
+class AUTHHEAD_UL_facial_features(bpy.types.UIList):
+    bl_idname = "AUTHHEAD_UL_facial_features"
+
+    def draw_item(
+        self,
+        context,
+        layout,
+        data,
+        item,
+        icon,
+        active_data,
+        active_propname,
+        index,
+    ):
+        if self.layout_type in {"DEFAULT", "COMPACT"}:
+            row = layout.row(align=True)
+            row.prop(item, "name", text="", emboss=False)
+            row.prop(item, "mask_vertex_group", text="", emboss=False)
+        elif self.layout_type == "GRID":
+            layout.alignment = "CENTER"
+            layout.label(text="", icon="GROUP_VERTEX")
+
+
+CLASSES = (
+    AUTHHEAD_UL_fbx_files,
+    AUTHHEAD_UL_facial_features,
+)

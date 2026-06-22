@@ -4,6 +4,15 @@ from .properties import ALL_SLOT_IDS, SLOT_SECTIONS
 from .preferences import restore_fbx_directory_if_empty
 from .scene.batch_load import included_fbx_count
 from .scene.debug_log import log_dir
+from .scene.facial_bake import list_auth_shape_keys_on_head
+from .scene.facial_registry import (
+    SLOT_LABELS,
+    count_enabled_registrations,
+    ensure_registrations,
+    find_registration,
+    get_effective_vertex_group_name,
+    iter_registered_object_slots,
+)
 from .scene.registry import all_slots_filled, registered_count
 
 
@@ -294,8 +303,212 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
                 )
 
 
+class AUTHHEAD_PT_facial_features(bpy.types.Panel):
+    bl_label = "Facial Feature Shapes"
+    bl_idname = "AUTHHEAD_PT_facial_features"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_main"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw_header(self, context):
+        facial = context.scene.auth_head_facial
+        enabled = count_enabled_registrations(context.scene)
+        self.layout.label(text=f"{len(facial.features)} / {enabled}", icon="MOD_MASK")
+
+
+class AUTHHEAD_PT_facial_feature_list(bpy.types.Panel):
+    bl_label = "Facial Feature List"
+    bl_idname = "AUTHHEAD_PT_facial_feature_list"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_facial_features"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        facial = context.scene.auth_head_facial
+
+        list_box = layout.box()
+        header = list_box.row()
+        header.label(text="Feature")
+        header.label(text="Mask Vert Group")
+
+        list_box.template_list(
+            "AUTHHEAD_UL_facial_features",
+            "",
+            facial,
+            "features",
+            facial,
+            "feature_list_index",
+            rows=4,
+        )
+
+        row = list_box.row(align=True)
+        row.operator("auth_head_ingestion.facial_feature_add", icon="ADD", text="Add")
+        row.operator("auth_head_ingestion.facial_feature_remove", icon="REMOVE", text="Remove")
+
+        if not facial.features:
+            layout.label(text="Add features to define mask vertex group names", icon="INFO")
+
+
+class AUTHHEAD_PT_facial_registration(bpy.types.Panel):
+    bl_label = "Shape Key Registration"
+    bl_idname = "AUTHHEAD_PT_facial_registration"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_facial_features"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        facial = context.scene.auth_head_facial
+        ensure_registrations(facial)
+
+        if not facial.features:
+            layout.label(text="Add features in the list above", icon="INFO")
+            return
+
+        tools = layout.row(align=True)
+        tools.operator(
+            "auth_head_ingestion.facial_sync_registrations",
+            text="Sync Registration",
+            icon="FILE_REFRESH",
+        )
+
+        registered_slots = list(iter_registered_object_slots(context.scene))
+        if not registered_slots:
+            layout.label(text="Register mesh objects in Scene Object Registry", icon="INFO")
+            return
+
+        for object_slot, mesh_obj in registered_slots:
+            box = layout.box()
+            header = box.row(align=True)
+            header.label(text=SLOT_LABELS.get(object_slot, object_slot), icon="MESH_DATA")
+
+            enable_all = header.operator(
+                "auth_head_ingestion.facial_enable_slot_features",
+                text="All",
+            )
+            enable_all.object_slot = object_slot
+            enable_all.enable = True
+
+            disable_all = header.operator(
+                "auth_head_ingestion.facial_enable_slot_features",
+                text="None",
+            )
+            disable_all.object_slot = object_slot
+            disable_all.enable = False
+
+            col_header = box.row()
+            col_header.scale_y = 0.85
+            col_header.label(text="On")
+            col_header.label(text="Feature")
+            col_header.label(text="Mask")
+            col_header.label(text="Override")
+
+            for feature in facial.features:
+                if not feature.name:
+                    continue
+
+                registration = find_registration(facial, object_slot, feature.name)
+                if registration is None:
+                    continue
+
+                row = box.row(align=True)
+                row.prop(registration, "enabled", text="")
+
+                name_col = row.row()
+                name_col.enabled = registration.enabled
+                name_col.label(text=feature.name)
+
+                mask_name = get_effective_vertex_group_name(facial, feature, registration)
+                mask_col = row.row()
+                mask_col.enabled = registration.enabled
+                if mesh_obj.vertex_groups.get(mask_name):
+                    mask_col.label(text=mask_name, icon="CHECKMARK")
+                else:
+                    mask_col.alert = True
+                    mask_col.label(text=mask_name or "(missing)", icon="ERROR")
+
+                override = row.row()
+                override.enabled = registration.enabled
+                override.prop_search(
+                    registration,
+                    "vertex_group_override",
+                    mesh_obj,
+                    "vertex_groups",
+                    text="",
+                )
+
+
+class AUTHHEAD_PT_facial_bake(bpy.types.Panel):
+    bl_label = "Bake"
+    bl_idname = "AUTHHEAD_PT_facial_bake"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_facial_features"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        facial = context.scene.auth_head_facial
+        ensure_registrations(facial)
+
+        auth_keys = list_auth_shape_keys_on_head(context.scene)
+        enabled_regs = count_enabled_registrations(context.scene)
+        bake_total = len(auth_keys) * enabled_regs
+
+        stats = layout.box()
+        col = stats.column(align=True)
+        col.label(text=f"{len(auth_keys)} auth shape key(s) on head", icon="SHAPEKEY_DATA")
+        col.label(text=f"{enabled_regs} enabled feature slot(s)", icon="MOD_MASK")
+        if bake_total:
+            col.label(text=f"Up to {bake_total} split key(s) per bake", icon="PRESET")
+        elif not auth_keys:
+            col.label(text="Load auth heads before baking", icon="INFO")
+        elif enabled_regs == 0:
+            col.label(text="Enable features in registration", icon="INFO")
+
+        options = layout.box()
+        options.prop(
+            facial,
+            "bake_override_existing",
+            text="Override Existing Split Keys",
+            icon="FILE_REFRESH",
+        )
+
+        run = layout.box()
+        run_row = run.row(align=True)
+        run_row.scale_y = 1.35
+        run_row.enabled = bool(auth_keys) and enabled_regs > 0 and bool(facial.features)
+        run_row.operator(
+            "auth_head_ingestion.facial_bake_features",
+            text="Bake Split Shape Keys",
+            icon="RENDER_STILL",
+        )
+
+        if facial.bake_status:
+            run.label(text=facial.bake_status, icon="INFO", translate=False)
+
+
 CLASSES = (
     AUTHHEAD_PT_main,
     AUTHHEAD_PT_scene_registry,
     AUTHHEAD_PT_load_heads_blendshape,
+    AUTHHEAD_PT_facial_features,
+    AUTHHEAD_PT_facial_feature_list,
+    AUTHHEAD_PT_facial_registration,
+    AUTHHEAD_PT_facial_bake,
 )

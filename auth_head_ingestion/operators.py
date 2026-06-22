@@ -1,6 +1,6 @@
 import bpy
 
-from .properties import ALL_SLOT_IDS
+from . import operators_facial
 from .scene.batch_load import (
     compare_fbx_to_head_shape_keys,
     included_fbx_count,
@@ -373,4 +373,4 @@ CLASSES = (
     AUTHHEAD_OT_cancel_batch_load,
     AUTHHEAD_OT_clear_debug_log,
     AUTHHEAD_OT_copy_debug_log,
-)
+) + operators_facial.CLASSES

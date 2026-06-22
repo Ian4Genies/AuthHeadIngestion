@@ -1,7 +1,13 @@
 import bpy
 
 from ..core.naming import AUTH_SHAPE_KEY_PREFIX
-from ..core.targets import HEAD_SLOT, LEFT_WEDGE_SLOTS, RIGHT_WEDGE_SLOTS
+from ..core.targets import (
+    HEAD_SLOT,
+    LEFT_BOOLEAN_SLOTS,
+    LEFT_WEDGE_SLOTS,
+    RIGHT_BOOLEAN_SLOTS,
+    RIGHT_WEDGE_SLOTS,
+)
 from .debug_log import log
 from .registry import get_registered_object
 
@@ -46,6 +52,9 @@ def log_shared_mesh_targets(scene) -> None:
     if batch.apply_hd_eyes:
         for slot_id in ("l_hd_eyes", "r_hd_eyes"):
             track(slot_id)
+    if batch.apply_boolean_cutters:
+        for slot_id in LEFT_BOOLEAN_SLOTS + RIGHT_BOOLEAN_SLOTS:
+            track(slot_id)
 
     for mesh_name, slots in sorted(mesh_to_objects.items()):
         if len(slots) > 1:
@@ -83,6 +92,9 @@ def iter_batch_target_objects(scene):
             yield from yield_obj(get_registered_object(scene, slot_id))
     if batch.apply_hd_eyes:
         for slot_id in ("l_hd_eyes", "r_hd_eyes"):
+            yield from yield_obj(get_registered_object(scene, slot_id))
+    if batch.apply_boolean_cutters:
+        for slot_id in LEFT_BOOLEAN_SLOTS + RIGHT_BOOLEAN_SLOTS:
             yield from yield_obj(get_registered_object(scene, slot_id))
 
 

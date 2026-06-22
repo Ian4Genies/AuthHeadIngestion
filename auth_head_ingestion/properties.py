@@ -83,6 +83,18 @@ class AUTHHEAD_PG_SceneObjects(PropertyGroup):
         type=bpy.types.Object,
         poll=mesh_object_poll,
     )
+    l_boolean_cutter: PointerProperty(
+        name="L Boolean Cutter",
+        description="Left boolean cutter mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
+    r_boolean_cutter: PointerProperty(
+        name="R Boolean Cutter",
+        description="Right boolean cutter mesh",
+        type=bpy.types.Object,
+        poll=mesh_object_poll,
+    )
 
 
 SLOT_SECTIONS = (
@@ -115,6 +127,14 @@ SLOT_SECTIONS = (
         (
             ("l_hd_eyes", "L HD Eyes"),
             ("r_hd_eyes", "R HD Eyes"),
+        ),
+    ),
+    (
+        "Boolean Cutters",
+        "MOD_BOOLEAN",
+        (
+            ("l_boolean_cutter", "L Boolean Cutter"),
+            ("r_boolean_cutter", "R Boolean Cutter"),
         ),
     ),
     (
@@ -190,6 +210,11 @@ class AUTHHEAD_PG_BatchLoad(PropertyGroup):
     apply_hd_eyes: BoolProperty(
         name="HD Eyes",
         description="Apply imported eye meshes to registered L/R HD eye targets",
+        default=True,
+    )
+    apply_boolean_cutters: BoolProperty(
+        name="Boolean",
+        description="Apply imported eye_L/R_boolean meshes to registered boolean cutter targets",
         default=True,
     )
 

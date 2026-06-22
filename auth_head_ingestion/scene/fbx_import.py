@@ -104,6 +104,38 @@ def _is_r_wedge(name: str) -> bool:
     ) and "_l_" not in normalized and "wedges_l" not in normalized and "wedge_l" not in normalized
 
 
+def _is_l_boolean(name: str) -> bool:
+    normalized = _normalize_name(name)
+    if "boolean" not in normalized:
+        return False
+    if "wedge" in normalized:
+        return False
+    return any(
+        token in normalized
+        for token in (
+            "eye_l_boolean",
+            "boolean_l",
+            "_l_boolean",
+        )
+    ) and "eye_r_boolean" not in normalized and "boolean_r" not in normalized
+
+
+def _is_r_boolean(name: str) -> bool:
+    normalized = _normalize_name(name)
+    if "boolean" not in normalized:
+        return False
+    if "wedge" in normalized:
+        return False
+    return any(
+        token in normalized
+        for token in (
+            "eye_r_boolean",
+            "boolean_r",
+            "_r_boolean",
+        )
+    ) and "eye_l_boolean" not in normalized and "boolean_l" not in normalized
+
+
 def _is_l_eye(name: str) -> bool:
     normalized = _normalize_name(name)
     if "wedge" in normalized or "boolean" in normalized:
@@ -156,6 +188,8 @@ def classify_imported_meshes(objects, scene=None, filename: str = "") -> dict[st
         "r_wedge": None,
         "l_eye": None,
         "r_eye": None,
+        "l_boolean": None,
+        "r_boolean": None,
     }
     unmatched_meshes = []
 
@@ -172,6 +206,14 @@ def classify_imported_meshes(objects, scene=None, filename: str = "") -> dict[st
             result["r_wedge"] = obj
             if scene is not None:
                 log(scene, f"Classified R wedge: '{obj.name}'", force=True)
+        elif _is_l_boolean(name):
+            result["l_boolean"] = obj
+            if scene is not None:
+                log(scene, f"Classified L boolean cutter: '{obj.name}'", force=True)
+        elif _is_r_boolean(name):
+            result["r_boolean"] = obj
+            if scene is not None:
+                log(scene, f"Classified R boolean cutter: '{obj.name}'", force=True)
         elif _is_l_eye(name):
             result["l_eye"] = obj
             if scene is not None:

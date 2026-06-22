@@ -208,12 +208,14 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
 
         sources = run_box.box()
         sources.label(text="Source Meshes", icon="MODIFIER_DATA")
-        row = sources.row(align=True)
-        row.prop(batch, "apply_head", toggle=True, icon="USER")
-        row.prop(batch, "apply_l_wedge", toggle=True, icon="TRIA_LEFT")
-        row.prop(batch, "apply_r_wedge", toggle=True, icon="TRIA_RIGHT")
-        row.prop(batch, "apply_eyes", toggle=True, icon="VIEWZOOM")
-        row.prop(batch, "apply_hd_eyes", toggle=True, icon="VIEWZOOM")
+        row_primary = sources.row(align=True)
+        row_primary.prop(batch, "apply_head", toggle=True, icon="USER")
+        row_primary.prop(batch, "apply_l_wedge", toggle=True, icon="TRIA_LEFT")
+        row_primary.prop(batch, "apply_r_wedge", toggle=True, icon="TRIA_RIGHT")
+        row_secondary = sources.row(align=True)
+        row_secondary.prop(batch, "apply_eyes", toggle=True, icon="VIEWZOOM")
+        row_secondary.prop(batch, "apply_hd_eyes", toggle=True, icon="VIEWZOOM")
+        row_secondary.prop(batch, "apply_boolean_cutters", toggle=True, icon="MOD_BOOLEAN")
 
         targets = run_box.box()
         targets.label(text="Target Mapping", icon="ARROW_LEFTRIGHT")
@@ -229,6 +231,8 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             col.label(text="L/R Eye  →  registered eyes (L/R)", icon="DOT")
         if batch.apply_hd_eyes:
             col.label(text="L/R Eye  →  registered HD eyes (L/R)", icon="DOT")
+        if batch.apply_boolean_cutters:
+            col.label(text="L/R Boolean  →  registered boolean cutters (L/R)", icon="DOT")
 
         if batch.is_running:
             progress = run_box.box()
@@ -260,6 +264,7 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
                 or batch.apply_r_wedge
                 or batch.apply_eyes
                 or batch.apply_hd_eyes
+                or batch.apply_boolean_cutters
             )
             run_row.operator(
                 "auth_head_ingestion.run_batch_load",

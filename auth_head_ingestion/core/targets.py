@@ -22,10 +22,20 @@ RIGHT_EYE_SLOTS = (
     "r_hd_eyes",
 )
 
+LEFT_BOOLEAN_SLOTS = (
+    "l_boolean_cutter",
+)
+
+RIGHT_BOOLEAN_SLOTS = (
+    "r_boolean_cutter",
+)
+
 ALL_SHAPE_KEY_TARGETS = (
     (HEAD_SLOT,)
     + LEFT_WEDGE_SLOTS
     + RIGHT_WEDGE_SLOTS
     + LEFT_EYE_SLOTS
     + RIGHT_EYE_SLOTS
+    + LEFT_BOOLEAN_SLOTS
+    + RIGHT_BOOLEAN_SLOTS
 )

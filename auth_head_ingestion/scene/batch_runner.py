@@ -1,6 +1,8 @@
 from ..core.targets import (
     HEAD_SLOT,
+    LEFT_BOOLEAN_SLOTS,
     LEFT_WEDGE_SLOTS,
+    RIGHT_BOOLEAN_SLOTS,
     RIGHT_WEDGE_SLOTS,
 )
 from .debug_log import log, log_exception, log_object
@@ -22,6 +24,7 @@ def _any_apply_enabled(batch) -> bool:
             batch.apply_r_wedge,
             batch.apply_eyes,
             batch.apply_hd_eyes,
+            batch.apply_boolean_cutters,
         )
     )
 
@@ -60,6 +63,11 @@ def validate_batch_ready(scene) -> list[str]:
             if get_registered_object(scene, slot_id) is None:
                 errors.append(f"Register {slot_id.replace('_', ' ')}")
 
+    if batch.apply_boolean_cutters:
+        for slot_id in LEFT_BOOLEAN_SLOTS + RIGHT_BOOLEAN_SLOTS:
+            if get_registered_object(scene, slot_id) is None:
+                errors.append(f"Register {slot_id.replace('_', ' ')}")
+
     if not _any_apply_enabled(batch):
         errors.append("Enable at least one batch source target")
 
@@ -73,7 +81,8 @@ def log_batch_settings(scene) -> None:
         scene,
         f"apply_head={batch.apply_head} apply_l_wedge={batch.apply_l_wedge} "
         f"apply_r_wedge={batch.apply_r_wedge} apply_eyes={batch.apply_eyes} "
-        f"apply_hd_eyes={batch.apply_hd_eyes}",
+        f"apply_hd_eyes={batch.apply_hd_eyes} "
+        f"apply_boolean_cutters={batch.apply_boolean_cutters}",
         force=True,
     )
 
@@ -91,8 +100,36 @@ def log_batch_settings(scene) -> None:
     if batch.apply_hd_eyes:
         for slot_id in ("l_hd_eyes", "r_hd_eyes"):
             log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
+    if batch.apply_boolean_cutters:
+        for slot_id in LEFT_BOOLEAN_SLOTS + RIGHT_BOOLEAN_SLOTS:
+            log_object(scene, f"Registered {slot_id}", get_registered_object(scene, slot_id))
 
     log_shared_mesh_targets(scene)
+
+
+def _apply_side_source(
+    scene,
+    sources: dict,
+    *,
+    side: str,
+    source_key: str,
+    shape_key_name: str,
+    target_slot: str,
+    label: str,
+    applied_mesh_keys: set,
+    missing_message: str,
+) -> None:
+    source = sources[source_key]
+    if source is None:
+        raise ValueError(missing_message)
+    target = get_registered_object(scene, target_slot)
+    add_shape_from_mesh(
+        target,
+        source,
+        shape_key_name,
+        scene=scene,
+        applied_mesh_keys=applied_mesh_keys,
+    )
 
 
 def _apply_eye_side(
@@ -105,16 +142,16 @@ def _apply_eye_side(
     label: str,
     applied_mesh_keys: set,
 ) -> None:
-    source = sources[f"{side}_eye"]
-    if source is None:
-        raise ValueError(f"{label} eye mesh not found in FBX")
-    target = get_registered_object(scene, target_slot)
-    add_shape_from_mesh(
-        target,
-        source,
-        shape_key_name,
-        scene=scene,
+    _apply_side_source(
+        scene,
+        sources,
+        side=side,
+        source_key=f"{side}_eye",
+        shape_key_name=shape_key_name,
+        target_slot=target_slot,
+        label=label,
         applied_mesh_keys=applied_mesh_keys,
+        missing_message=f"{label} eye mesh not found in FBX",
     )
 
 
@@ -229,6 +266,27 @@ def process_fbx_item(scene, item) -> dict:
                     log_exception(scene, f"HD eye apply failed on {slot_id}", exc)
                     raise
             applied.append("HD eyes")
+
+        if batch.apply_boolean_cutters:
+            for side, slot_id in (("l", "l_boolean_cutter"), ("r", "r_boolean_cutter")):
+                try:
+                    _apply_side_source(
+                        scene,
+                        sources,
+                        side=side,
+                        source_key=f"{side}_boolean",
+                        shape_key_name=shape_key_name,
+                        target_slot=slot_id,
+                        label=f"{side.upper()} boolean",
+                        applied_mesh_keys=applied_mesh_keys,
+                        missing_message=f"{side.upper()} boolean cutter mesh not found in FBX",
+                    )
+                    slot_results.append(f"{slot_id}:ok")
+                except Exception as exc:
+                    slot_results.append(f"{slot_id}:FAIL({exc})")
+                    log_exception(scene, f"Boolean cutter apply failed on {slot_id}", exc)
+                    raise
+            applied.append("boolean cutters")
 
         if slot_results:
             log(scene, f"Slot results: {', '.join(slot_results)}")

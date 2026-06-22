@@ -291,6 +291,36 @@ class AUTHHEAD_PG_FacialFeatures(PropertyGroup):
     bake_status: StringProperty(name="Bake Status", default="")
 
 
+class AUTHHEAD_PG_AuthVariant(PropertyGroup):
+    name: StringProperty(name="Shape Key")
+    mesh_count: IntProperty(name="Meshes", default=0)
+    split_count: IntProperty(name="Split Keys", default=0)
+
+
+def _on_show_split_keys_changed(self, context):
+    from .scene.auth_viewer import refresh_variant_list
+
+    refresh_variant_list(context.scene)
+
+
+class AUTHHEAD_PG_AuthViewer(PropertyGroup):
+    variants: CollectionProperty(type=AUTHHEAD_PG_AuthVariant)
+    variant_list_index: IntProperty(name="Variant Index", default=0)
+    active_preview: StringProperty(name="Active Preview", default="")
+    show_split_keys: BoolProperty(
+        name="Show Split Keys",
+        description="Include facial feature split shape keys in the variant list",
+        default=False,
+        update=_on_show_split_keys_changed,
+    )
+    delete_include_splits: BoolProperty(
+        name="Delete Split Keys",
+        description="When deleting variants, also remove derived split feature keys",
+        default=True,
+    )
+    status: StringProperty(name="Status", default="")
+
+
 CLASSES = (
     AUTHHEAD_PG_SceneObjects,
     AUTHHEAD_PG_FbxFile,
@@ -298,4 +328,6 @@ CLASSES = (
     AUTHHEAD_PG_FacialFeature,
     AUTHHEAD_PG_FeatureRegistration,
     AUTHHEAD_PG_FacialFeatures,
+    AUTHHEAD_PG_AuthVariant,
+    AUTHHEAD_PG_AuthViewer,
 )

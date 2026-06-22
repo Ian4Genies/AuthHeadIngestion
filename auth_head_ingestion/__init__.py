@@ -3,6 +3,7 @@ import importlib
 if "bpy" in locals():
     importlib.reload(properties)
     importlib.reload(operators_facial)
+    importlib.reload(operators_viewer)
     importlib.reload(operators)
     importlib.reload(panels)
     importlib.reload(ui_lists)
@@ -19,6 +20,7 @@ if "bpy" in locals():
     importlib.reload(scene.debug_log)
     importlib.reload(scene.facial_registry)
     importlib.reload(scene.facial_bake)
+    importlib.reload(scene.auth_viewer)
     importlib.reload(core.targets)
     importlib.reload(preferences)
 
@@ -32,10 +34,10 @@ from .scene.debug_log import ensure_log_directory, log_dir
 bl_info = {
     "name": "Auth Head Ingestion",
     "author": "Genies",
-    "version": (0, 4, 0),
+    "version": (0, 5, 0),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > Auth Head",
-    "description": "Register pipeline scene objects, batch-load authored head FBX, and bake facial feature shape keys",
+    "description": "Register pipeline scene objects, batch-load authored head FBX, bake facial features, and preview auth shape keys",
     "category": "Mesh",
 }
 
@@ -72,6 +74,9 @@ def register():
     bpy.types.Scene.auth_head_facial = bpy.props.PointerProperty(
         type=properties.AUTHHEAD_PG_FacialFeatures,
     )
+    bpy.types.Scene.auth_head_viewer = bpy.props.PointerProperty(
+        type=properties.AUTHHEAD_PG_AuthViewer,
+    )
 
     log_path = ensure_log_directory()
     print(f"[AuthHeadIngestion] Log directory: {log_path}")
@@ -88,6 +93,7 @@ def unregister():
     if _load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_load_post)
 
+    del bpy.types.Scene.auth_head_viewer
     del bpy.types.Scene.auth_head_facial
     del bpy.types.Scene.auth_head_batch
     del bpy.types.Scene.auth_head_objects

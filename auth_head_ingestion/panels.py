@@ -256,6 +256,19 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             if batch.status_message:
                 run_box.label(text=batch.status_message, icon="INFO")
 
+            if batch.preview_shape_key:
+                preview_row = run_box.row(align=True)
+                preview_row.label(
+                    text=f"Preview active: {batch.preview_shape_key}",
+                    icon="HIDE_OFF",
+                    translate=False,
+                )
+                preview_row.operator(
+                    "auth_head_ingestion.auth_reset_all_previews",
+                    text="Reset",
+                    icon="LOOP_BACK",
+                )
+
             run_row = run_box.row(align=True)
             run_row.scale_y = 1.45
             run_row.enabled = included_fbx_count(context.scene) > 0 and bool(
@@ -511,6 +524,151 @@ class AUTHHEAD_PT_facial_bake(bpy.types.Panel):
             run.label(text=facial.bake_status, icon="INFO", translate=False)
 
 
+class AUTHHEAD_PT_auth_viewer(bpy.types.Panel):
+    bl_label = "Auth Blendshape Viewer"
+    bl_idname = "AUTHHEAD_PT_auth_viewer"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_main"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw_header(self, context):
+        viewer = context.scene.auth_head_viewer
+        preview = viewer.active_preview or "—"
+        self.layout.label(text=preview, icon="SHAPEKEY_DATA", translate=False)
+
+    def draw(self, context):
+        from .scene.auth_viewer import refresh_variant_list
+
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        viewer = context.scene.auth_head_viewer
+        if not viewer.variants:
+            refresh_variant_list(context.scene)
+
+        tools = layout.box()
+        row = tools.row(align=True)
+        row.scale_y = 1.2
+        row.operator(
+            "auth_head_ingestion.auth_reset_all_previews",
+            text="Reset All Previews",
+            icon="LOOP_BACK",
+        )
+        row.operator(
+            "auth_head_ingestion.auth_viewer_refresh",
+            text="Refresh",
+            icon="FILE_REFRESH",
+        )
+
+        if viewer.active_preview:
+            tools.label(
+                text=f"Previewing: {viewer.active_preview}",
+                icon="HIDE_OFF",
+                translate=False,
+            )
+        elif context.scene.auth_head_batch.preview_shape_key:
+            tools.label(
+                text="Batch left a preview active — reset before re-import if needed",
+                icon="INFO",
+            )
+
+        if viewer.status:
+            tools.label(text=viewer.status, icon="INFO", translate=False)
+
+        list_box = layout.box()
+        header = list_box.row(align=True)
+        header.label(text="Auth Variants", icon="SHAPEKEY_DATA")
+        header.prop(viewer, "show_split_keys", text="Splits")
+
+        list_box.template_list(
+            "AUTHHEAD_UL_auth_variants",
+            "",
+            viewer,
+            "variants",
+            viewer,
+            "variant_list_index",
+            rows=8,
+        )
+
+        if not viewer.variants:
+            list_box.label(text="No auth_* shape keys on registered objects", icon="INFO")
+            return
+
+        actions = layout.box()
+        row = actions.row(align=True)
+        delete = row.operator(
+            "auth_head_ingestion.auth_delete_variant",
+            text="Delete Selected",
+            icon="TRASH",
+        )
+        delete.include_splits = viewer.delete_include_splits
+
+        actions.prop(
+            viewer,
+            "delete_include_splits",
+            text="Include split keys when deleting",
+            icon="MOD_MASK",
+        )
+
+        danger = layout.box()
+        danger.alert = True
+        delete_all = danger.row(align=True)
+        delete_all.scale_y = 1.15
+        op = delete_all.operator(
+            "auth_head_ingestion.auth_delete_all_variants",
+            text="Delete All Auth Variants",
+            icon="CANCEL",
+        )
+        op.include_splits = viewer.delete_include_splits
+
+
+class AUTHHEAD_PT_auth_viewer_weights(bpy.types.Panel):
+    bl_label = "Per-Object Weights"
+    bl_idname = "AUTHHEAD_PT_auth_viewer_weights"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Auth Head"
+    bl_parent_id = "AUTHHEAD_PT_auth_viewer"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        viewer = context.scene.auth_head_viewer
+        return bool(viewer.variants) and 0 <= viewer.variant_list_index < len(viewer.variants)
+
+    def draw(self, context):
+        from .scene.auth_viewer import SLOT_LABELS, iter_registered_object_slots
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        viewer = context.scene.auth_head_viewer
+        item = viewer.variants[viewer.variant_list_index]
+        layout.label(text=item.name, icon="SHAPEKEY_DATA", translate=False)
+
+        found_any = False
+        for slot_id, obj in iter_registered_object_slots(context.scene):
+            shape_keys = obj.data.shape_keys
+            if shape_keys is None or item.name not in shape_keys.key_blocks:
+                continue
+
+            found_any = True
+            key_block = shape_keys.key_blocks[item.name]
+            layout.prop(
+                key_block,
+                "value",
+                text=SLOT_LABELS.get(slot_id, slot_id),
+                slider=True,
+            )
+
+        if not found_any:
+            layout.label(text="Selected variant is not present on registered objects", icon="ERROR")
+
+
 CLASSES = (
     AUTHHEAD_PT_main,
     AUTHHEAD_PT_scene_registry,
@@ -519,4 +677,6 @@ CLASSES = (
     AUTHHEAD_PT_facial_feature_list,
     AUTHHEAD_PT_facial_registration,
     AUTHHEAD_PT_facial_bake,
+    AUTHHEAD_PT_auth_viewer,
+    AUTHHEAD_PT_auth_viewer_weights,
 )

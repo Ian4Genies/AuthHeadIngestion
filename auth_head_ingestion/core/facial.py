@@ -14,3 +14,7 @@ def is_base_auth_shape_key(name: str) -> bool:
         return False
     parts = name[len(AUTH_SHAPE_KEY_PREFIX):].split("_")
     return len(parts) == 3
+
+
+def is_split_auth_shape_key(name: str) -> bool:
+    return is_auth_shape_key(name) and not is_base_auth_shape_key(name)

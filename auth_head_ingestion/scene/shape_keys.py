@@ -99,28 +99,17 @@ def iter_batch_target_objects(scene):
 
 
 def zero_auth_shape_keys(scene) -> None:
-    for obj in iter_batch_target_objects(scene):
-        shape_keys = obj.data.shape_keys
-        if shape_keys is None:
-            continue
-        for key_block in shape_keys.key_blocks:
-            if _is_auth_shape_key(key_block.name):
-                key_block.value = 0.0
+    from .auth_viewer import zero_all_auth_shape_keys
+
+    zero_all_auth_shape_keys(scene)
 
 
 def set_active_preview_shape_key(scene, shape_key_name: str) -> None:
-    for obj in iter_batch_target_objects(scene):
-        shape_keys = obj.data.shape_keys
-        if shape_keys is None:
-            continue
-        for key_block in shape_keys.key_blocks:
-            if _is_auth_shape_key(key_block.name):
-                key_block.value = 1.0 if key_block.name == shape_key_name else 0.0
+    from .auth_viewer import set_solo_preview
 
-    batch = scene.auth_head_batch
-    batch.preview_shape_key = shape_key_name
+    set_solo_preview(scene, shape_key_name)
 
-    if batch.debug_verbose:
+    if scene.auth_head_batch.debug_verbose:
         log(scene, f"Preview shape key set to '{shape_key_name}'", force=True)
 
 

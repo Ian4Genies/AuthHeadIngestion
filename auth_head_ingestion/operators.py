@@ -1,6 +1,6 @@
 import bpy
 
-from . import operators_facial
+from . import operators_facial, operators_viewer
 from .properties import ALL_SLOT_IDS
 from .scene.batch_load import (
     compare_fbx_to_head_shape_keys,
@@ -315,6 +315,9 @@ class AUTHHEAD_OT_run_batch_load(bpy.types.Operator):
                 f"Complete — {batch.processed_count} applied, {batch.failed_count} failed"
             )
             log(context.scene, batch.status_message, force=True)
+            from .scene.auth_viewer import refresh_variant_list
+
+            refresh_variant_list(context.scene)
             end_file_session(
                 context.scene,
                 status="complete",
@@ -388,4 +391,4 @@ CLASSES = (
     AUTHHEAD_OT_cancel_batch_load,
     AUTHHEAD_OT_clear_debug_log,
     AUTHHEAD_OT_copy_debug_log,
-) + operators_facial.CLASSES
+) + operators_facial.CLASSES + operators_viewer.CLASSES

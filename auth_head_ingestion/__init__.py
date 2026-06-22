@@ -42,13 +42,14 @@ bl_info = {
 
 @persistent
 def _load_post(_dummy):
-    if bpy.context.scene is None:
+    scene = getattr(bpy.context, "scene", None)
+    if scene is None:
         return
-    batch = bpy.context.scene.auth_head_batch
+    batch = scene.auth_head_batch
     if batch.fbx_directory:
         preferences.save_fbx_directory(batch.fbx_directory)
     else:
-        preferences.restore_fbx_directory_if_empty(bpy.context.scene)
+        preferences.restore_fbx_directory_if_empty(scene)
 
 
 def register():
@@ -75,8 +76,9 @@ def register():
     log_path = ensure_log_directory()
     print(f"[AuthHeadIngestion] Log directory: {log_path}")
 
-    if bpy.context.scene is not None:
-        preferences.restore_fbx_directory_if_empty(bpy.context.scene)
+    scene = getattr(bpy.context, "scene", None)
+    if scene is not None:
+        preferences.restore_fbx_directory_if_empty(scene)
 
     if _load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_load_post)

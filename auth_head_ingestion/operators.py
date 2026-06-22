@@ -1,6 +1,7 @@
 import bpy
 
 from . import operators_facial
+from .properties import ALL_SLOT_IDS
 from .scene.batch_load import (
     compare_fbx_to_head_shape_keys,
     included_fbx_count,

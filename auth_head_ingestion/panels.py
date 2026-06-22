@@ -317,6 +317,9 @@ class AUTHHEAD_PT_facial_features(bpy.types.Panel):
         enabled = count_enabled_registrations(context.scene)
         self.layout.label(text=f"{len(facial.features)} / {enabled}", icon="MOD_MASK")
 
+    def draw(self, context):
+        pass
+
 
 class AUTHHEAD_PT_facial_feature_list(bpy.types.Panel):
     bl_label = "Facial Feature List"

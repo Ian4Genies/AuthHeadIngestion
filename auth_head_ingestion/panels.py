@@ -256,22 +256,10 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             if batch.status_message:
                 run_box.label(text=batch.status_message, icon="INFO")
 
-            if batch.preview_shape_key:
-                preview_row = run_box.row(align=True)
-                preview_row.label(
-                    text=f"Preview active: {batch.preview_shape_key}",
-                    icon="HIDE_OFF",
-                    translate=False,
-                )
-                preview_row.operator(
-                    "auth_head_ingestion.auth_reset_all_previews",
-                    text="Reset",
-                    icon="LOOP_BACK",
-                )
-
             run_row = run_box.row(align=True)
             run_row.scale_y = 1.45
-            run_row.enabled = included_fbx_count(context.scene) > 0 and bool(
+            run_main = run_row.row(align=True)
+            run_main.enabled = included_fbx_count(context.scene) > 0 and bool(
                 batch.apply_head
                 or batch.apply_l_wedge
                 or batch.apply_r_wedge
@@ -279,10 +267,19 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
                 or batch.apply_hd_eyes
                 or batch.apply_boolean_cutters
             )
-            run_row.operator(
+            run_main.operator(
                 "auth_head_ingestion.run_batch_load",
                 text=f"Run Batch ({included_fbx_count(context.scene)} files)",
                 icon="PLAY",
+            )
+            run_reset = run_row.row(align=True)
+            run_reset.enabled = bool(
+                context.scene.auth_head_viewer.active_preview or batch.preview_shape_key
+            )
+            run_reset.operator(
+                "auth_head_ingestion.auth_reset_all_previews",
+                text="",
+                icon="LOOP_BACK",
             )
 
         debug_box = layout.box()

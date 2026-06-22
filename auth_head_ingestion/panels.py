@@ -532,8 +532,7 @@ class AUTHHEAD_PT_auth_viewer(bpy.types.Panel):
 
     def draw_header(self, context):
         viewer = context.scene.auth_head_viewer
-        preview = viewer.active_preview or "—"
-        self.layout.label(text=preview, icon="SHAPEKEY_DATA", translate=False)
+        self.layout.label(text=str(len(viewer.variants)), icon="SHAPEKEY_DATA")
 
     def draw(self, context):
         from .scene.auth_viewer import refresh_variant_list
@@ -543,6 +542,7 @@ class AUTHHEAD_PT_auth_viewer(bpy.types.Panel):
         layout.use_property_decorate = False
 
         viewer = context.scene.auth_head_viewer
+        batch = context.scene.auth_head_batch
         if not viewer.variants:
             refresh_variant_list(context.scene)
 
@@ -560,20 +560,12 @@ class AUTHHEAD_PT_auth_viewer(bpy.types.Panel):
             icon="FILE_REFRESH",
         )
 
-        if viewer.active_preview:
-            tools.label(
-                text=f"Previewing: {viewer.active_preview}",
-                icon="HIDE_OFF",
-                translate=False,
-            )
-        elif context.scene.auth_head_batch.preview_shape_key:
-            tools.label(
-                text="Batch left a preview active — reset before re-import if needed",
-                icon="INFO",
-            )
-
-        if viewer.status:
-            tools.label(text=viewer.status, icon="INFO", translate=False)
+        preview = viewer.active_preview or batch.preview_shape_key or "—"
+        tools.label(
+            text=f"Preview: {preview}  ·  {len(viewer.variants)} variant(s)",
+            icon="HIDE_OFF" if preview != "—" else "SHAPEKEY_DATA",
+            translate=False,
+        )
 
         list_box = layout.box()
         header = list_box.row(align=True)

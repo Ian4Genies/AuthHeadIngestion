@@ -288,6 +288,24 @@ def process_fbx_item(scene, item) -> dict:
                     raise
             applied.append("boolean cutters")
 
+            if batch.sync_eye_frame:
+                from .eye_frame import sync_eye_frame
+
+                try:
+                    eye_frame_result = sync_eye_frame(scene, shape_key_name)
+                except Exception as exc:
+                    slot_results.append(f"eye_frame:FAIL({exc})")
+                    log_exception(scene, "Eye frame sync failed", exc)
+                    raise
+
+                if eye_frame_result.get("skipped"):
+                    slot_results.append(f"eye_frame:skipped({eye_frame_result['skipped']})")
+                else:
+                    for side, count in eye_frame_result.items():
+                        slot_results.append(f"eye_frame_{side}:{count}v")
+                    if eye_frame_result:
+                        applied.append("eye frame")
+
         if slot_results:
             log(scene, f"Slot results: {', '.join(slot_results)}")
 

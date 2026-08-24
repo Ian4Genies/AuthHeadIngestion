@@ -177,6 +177,32 @@ class AUTHHEAD_OT_compare_to_loaded(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AUTHHEAD_OT_sync_eye_frame(bpy.types.Operator):
+    bl_idname = "auth_head_ingestion.sync_eye_frame"
+    bl_label = "Sync Eye Frame"
+    bl_description = (
+        "Re-derive the head's eye socket ring from every auth_* shape key already "
+        "present on the registered boolean cutter(s)"
+    )
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        from .scene.eye_frame import sync_all_eye_frames
+
+        try:
+            result = sync_all_eye_frames(context.scene)
+        except ValueError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+        self.report(
+            {"INFO"},
+            f"Synced {len(result['shape_keys'])} shape key(s), "
+            f"{result['vertex_updates']} ring vertex update(s)",
+        )
+        return {"FINISHED"}
+
+
 class AUTHHEAD_OT_fbx_include_all(bpy.types.Operator):
     bl_idname = "auth_head_ingestion.fbx_include_all"
     bl_label = "Enable All"
@@ -385,6 +411,7 @@ CLASSES = (
     AUTHHEAD_OT_assign_all_from_selection,
     AUTHHEAD_OT_scan_fbx_directory,
     AUTHHEAD_OT_compare_to_loaded,
+    AUTHHEAD_OT_sync_eye_frame,
     AUTHHEAD_OT_fbx_include_all,
     AUTHHEAD_OT_fbx_exclude_all,
     AUTHHEAD_OT_run_batch_load,

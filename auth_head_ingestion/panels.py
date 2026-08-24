@@ -127,6 +127,17 @@ class AUTHHEAD_PT_scene_registry(bpy.types.Panel):
             for slot_id, label in slots:
                 _draw_slot_row(col, context, props, slot_id, label)
 
+            if section_title == "Boolean Cutters":
+                sync_row = box.row(align=True)
+                sync_row.enabled = bool(props.head) and bool(
+                    props.l_boolean_cutter or props.r_boolean_cutter
+                )
+                sync_row.operator(
+                    "auth_head_ingestion.sync_eye_frame",
+                    text="Sync Eye Frame",
+                    icon="FILE_REFRESH",
+                )
+
 
 class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
     bl_label = "Load Heads as Blendshape"
@@ -217,6 +228,10 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
         row_secondary.prop(batch, "apply_hd_eyes", toggle=True, icon="VIEWZOOM")
         row_secondary.prop(batch, "apply_boolean_cutters", toggle=True, icon="MOD_BOOLEAN")
 
+        sync_row = sources.row(align=True)
+        sync_row.enabled = batch.apply_boolean_cutters
+        sync_row.prop(batch, "sync_eye_frame", toggle=True, icon="FILE_REFRESH")
+
         targets = run_box.box()
         targets.label(text="Target Mapping", icon="ARROW_LEFTRIGHT")
         col = targets.column(align=True)
@@ -233,6 +248,8 @@ class AUTHHEAD_PT_load_heads_blendshape(bpy.types.Panel):
             col.label(text="L/R Eye  →  registered HD eyes (L/R)", icon="DOT")
         if batch.apply_boolean_cutters:
             col.label(text="L/R Boolean  →  registered boolean cutters (L/R)", icon="DOT")
+            if batch.sync_eye_frame:
+                col.label(text="L/R Boolean  →  head eye socket ring (synced)", icon="DOT")
 
         if batch.is_running:
             progress = run_box.box()

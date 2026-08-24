@@ -217,6 +217,15 @@ class AUTHHEAD_PG_BatchLoad(PropertyGroup):
         description="Apply imported eye_L/R_boolean meshes to registered boolean cutter targets",
         default=True,
     )
+    sync_eye_frame: BoolProperty(
+        name="Sync Eye Frame",
+        description=(
+            "After applying boolean cutters, also re-derive the head's eye socket ring "
+            "from them. Only needed if the incoming mesh's cutters aren't already "
+            "preconditioned to match the head"
+        ),
+        default=False,
+    )
 
     debug_verbose: BoolProperty(
         name="Debug Output",
